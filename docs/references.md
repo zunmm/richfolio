@@ -6,7 +6,7 @@ nav_order: 9
 
 # References & Prior Art
 
-Open-source repos referenced during the design and build of richfolio. Read these before building each module — they've already solved the hard parts.
+Open-source repos and articles referenced during the design and build of richfolio. Read these before building each module — they've already solved the hard parts.
 
 ---
 
@@ -26,17 +26,27 @@ The gold standard open-source wealth management app. You don't want to *use* it 
 
 ---
 
-## 🥈 [hvkshetry/agentic-investment-management](https://github.com/hvkshetry/agentic-investment-management)
+## 🥈 [TraderAlice/OpenAlice](https://github.com/TraderAlice/OpenAlice) ⭐ ~3.8k
 
-> TypeScript + Claude Code + MCP agents
+> TypeScript + Claude SDK + Multi-Broker (Alpaca, IBKR, CCXT) + File-based state
 
-Built specifically for Claude Code with slash commands like `/daily-check` and `/rebalance`. Uses a multi-agent structure with specialist roles: `portfolio-manager`, `equity-analyst`, `etf-analyst`, `macro-analyst`. Pulls data from Yahoo Finance + Finnhub + OpenBB, all zero-cost. Almost directly analogous to what richfolio is building.
+An autonomous AI trading agent that executes trades directly, using a multi-layered analysis approach combining technical indicators, fundamental data, and structured AI reasoning. OpenAlice's architecture prioritizes explainability, safety, and auditability over raw automation — every decision is traceable, every guard is configurable, and the entire reasoning process is visible.
 
-**Mine from it:**
-- The `CLAUDE.md` orchestration pattern for agentic workflows
-- `/daily-check` command structure — what it checks and in what order
-- How it decomposes equity analysis vs ETF analysis (ETFs skip P/E, use different signals)
-- Macro analyst prompt: how to connect macro news to specific portfolio positions
+**Directly inspired six Richfolio features:**
+
+- **Two-Stage Think/Plan AI Prompting** — OpenAlice's `think` and `plan` tools separate observation from decision-making. Stage 1 records observations about market data; Stage 2 evaluates options and commits to actions. Richfolio adapts this as two sequential Gemini calls: Observe (extract structured signals) → Decide (apply rules to observations). This separation significantly improves STRONG BUY criteria consistency.
+
+- **Post-AI Guard Validation Pipeline** — OpenAlice's `guard-pipeline.ts` runs sequential validation checks (position size limits, cooldown periods, symbol whitelist) before broker execution, with context isolation preventing guards from accidentally triggering trades. Richfolio's `guards.ts` adapts this as 6 post-AI checks: bond ETF cap, earnings proximity, STRONG BUY criteria enforcement, max 2 STRONG BUY, confidence sanity, and buy value sanity.
+
+- **Earnings Calendar Awareness** — OpenAlice's equity research tools (`equity.ts`) check the earnings calendar to avoid holding positions during high-risk events. Richfolio adds `calendarEvents` to the existing Yahoo Finance call and hard-caps recommendations near earnings (≤3d → HOLD, ≤7d → no STRONG BUY).
+
+- **News Sentiment Scoring** — OpenAlice uses structured sentiment analysis in its news pipeline. Richfolio upgrades the Gemini news filter from binary relevance to per-article sentiment (bullish/bearish/neutral) + impact (high/medium/low) scoring.
+
+- **Reasoning Persistence (Brain/Memory)** — OpenAlice's `Brain.ts` tracks cognitive state via Git-like commits with emotional state and working memory that persists across sessions. Richfolio adapts this as a 7-day rolling history of AI reasoning snapshots, showing conviction trends in the decision prompt.
+
+- **Additional Technical Indicators** — OpenAlice's formula-based indicator system (`calculator.ts`) supports ATR, Stochastic, and other indicators beyond basic MACD/RSI. Richfolio adds ATR(14) for volatility context, Stochastic(%K/%D) for oversold/overbought confirmation, and OBV trend for accumulation/distribution detection — all from existing chart data.
+
+**Key architectural insight adopted:** OpenAlice's guard pipeline design principle — guards never see the broker object, only a `GuardContext` — maps cleanly to Richfolio's approach where guards receive recommendation data and report context, not raw API objects. This isolation prevents guard logic from having unintended side effects.
 
 ---
 
@@ -76,7 +86,11 @@ Already evaluated as "don't fork" (Python daemon, Chinese push apps, no portfoli
 
 ---
 
-## 🧠 [XinGPT (@xingpt)](https://x.com/xingpt) — AI Agent Skills Framework
+## Articles
+
+---
+
+### 🧠 [XinGPT (@xingpt)](https://x.com/xingpt) — AI Agent Skills Framework
 
 > [BlockTempo article](https://www.blocktempo.com/ai-agent-personal-business-productivity-transformation-guide/) by Joe, compiled from [@xingpt on X](https://x.com/xingpt/status/2025219080421277813)
 
@@ -91,38 +105,27 @@ A comprehensive guide on embedding structured analytical "skills" into AI agents
 
 ---
 
-## 🤖 [TraderAlice/OpenAlice](https://github.com/TraderAlice/OpenAlice)
+### 🤖 hvkshetry — Agentic AI for Investment Management
 
-> TypeScript + Claude SDK + Multi-Broker (Alpaca, IBKR, CCXT) + File-based state
+> [Medium article](https://medium.com/data-science-collective/agentic-ai-for-investment-management-from-concept-to-production-a2713c37cc76) — *Agentic AI for Investment Management: From Concept to Production*
 
-An autonomous AI trading agent that executes trades directly, using a multi-layered analysis approach combining technical indicators, fundamental data, and structured AI reasoning. OpenAlice's architecture prioritizes explainability, safety, and auditability over raw automation — every decision is traceable, every guard is configurable, and the entire reasoning process is visible.
+A walkthrough of building a multi-agent investment management system with Claude Code and MCP, covering specialist agent roles (`portfolio-manager`, `equity-analyst`, `etf-analyst`, `macro-analyst`), slash command orchestration via `CLAUDE.md`, and zero-cost data sourcing from Yahoo Finance + Finnhub + OpenBB. Almost directly analogous to what richfolio is building.
 
-**Directly inspired six Richfolio features:**
-
-- **Two-Stage Think/Plan AI Prompting** — OpenAlice's `think` and `plan` tools separate observation from decision-making. Stage 1 records observations about market data; Stage 2 evaluates options and commits to actions. Richfolio adapts this as two sequential Gemini calls: Observe (extract structured signals) → Decide (apply rules to observations). This separation significantly improves STRONG BUY criteria consistency.
-
-- **Post-AI Guard Validation Pipeline** — OpenAlice's `guard-pipeline.ts` runs sequential validation checks (position size limits, cooldown periods, symbol whitelist) before broker execution, with context isolation preventing guards from accidentally triggering trades. Richfolio's `guards.ts` adapts this as 6 post-AI checks: bond ETF cap, earnings proximity, STRONG BUY criteria enforcement, max 2 STRONG BUY, confidence sanity, and buy value sanity.
-
-- **Earnings Calendar Awareness** — OpenAlice's equity research tools (`equity.ts`) check the earnings calendar to avoid holding positions during high-risk events. Richfolio adds `calendarEvents` to the existing Yahoo Finance call and hard-caps recommendations near earnings (≤3d → HOLD, ≤7d → no STRONG BUY).
-
-- **News Sentiment Scoring** — OpenAlice uses structured sentiment analysis in its news pipeline. Richfolio upgrades the Gemini news filter from binary relevance to per-article sentiment (bullish/bearish/neutral) + impact (high/medium/low) scoring.
-
-- **Reasoning Persistence (Brain/Memory)** — OpenAlice's `Brain.ts` tracks cognitive state via Git-like commits with emotional state and working memory that persists across sessions. Richfolio adapts this as a 7-day rolling history of AI reasoning snapshots, showing conviction trends in the decision prompt.
-
-- **Additional Technical Indicators** — OpenAlice's formula-based indicator system (`calculator.ts`) supports ATR, Stochastic, and other indicators beyond basic MACD/RSI. Richfolio adds ATR(14) for volatility context, Stochastic(%K/%D) for oversold/overbought confirmation, and OBV trend for accumulation/distribution detection — all from existing chart data.
-
-**Key architectural insight adopted:** OpenAlice's guard pipeline design principle — guards never see the broker object, only a `GuardContext` — maps cleanly to Richfolio's approach where guards receive recommendation data and report context, not raw API objects. This isolation prevents guard logic from having unintended side effects.
+**Informed Richfolio's approach to:**
+- `CLAUDE.md` orchestration pattern for agentic dev workflows
+- How to decompose equity vs ETF analysis (ETFs skip P/E, use different signals)
+- Connecting macro data to specific portfolio position commentary
 
 ---
 
-## Design Decisions Informed by These Repos
+## Design Decisions Informed by These References
 
 | Decision | Informed by |
 |----------|-------------|
 | Use `yahoo-finance2` not Finnhub for fundamentals | ghostfolio (battle-tested at scale), yahoo-finance2 docs |
 | Skip P/E for ETFs, use 52w range position instead | ghostfolio data model, yahoo-finance2 ETF quirks |
 | AI-summarise news per ticker, not raw headlines | MarketPulse prompt pattern |
-| Slash command structure for Claude Code dev workflow | agentic-investment-management CLAUDE.md |
+| Slash command structure for Claude Code dev workflow | hvkshetry's agentic investment management article |
 | Fork-and-run model (no shared server) | Contrast with ghostfolio's self-hosted complexity |
 | Embed analytical skills as prompt instructions, not separate agents | XinGPT's AI agent skills framework |
 | Value investing A–D rating using fundamental criteria | XinGPT's 美股價值投資框架 concept |
