@@ -22,5 +22,14 @@ footer_content: "Richfolio &mdash; free, open-source portfolio monitoring."
 
 nav_sort: order
 
+plugins:
+  - jekyll-remote-theme
+  - jekyll-polyglot
+
+languages: ["en", "zh-CN", "zh-TW"]
+default_lang: "en"
+exclude_from_localization: ["icon.png", "feature-image.png", "screenshots", "mockups", "analysis", "assets"]
+parallel_localization: true
+
 exclude:
   - Gemfile.lock

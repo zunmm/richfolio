@@ -1,0 +1,56 @@
+{%- comment -%}
+  Compute the canonical path (no locale prefix) as a relative segment list, so polyglot's
+  URL-rewrite regex (which matches /...) has nothing to mangle. We encode segments as a JSON
+  array in a data attribute and let runtime JS build the hrefs.
+{%- endcomment -%}
+{%- assign canonical_path = page.url -%}
+{%- for lang in site.languages -%}
+  {%- unless lang == site.default_lang -%}
+    {%- assign prefix = '/' | append: lang -%}
+    {%- assign prefix_slash = prefix | append: '/' -%}
+    {%- if canonical_path == prefix or canonical_path contains prefix_slash -%}
+      {%- assign canonical_path = canonical_path | remove_first: prefix -%}
+    {%- endif -%}
+  {%- endunless -%}
+{%- endfor -%}
+{%- if canonical_path == '' -%}{%- assign canonical_path = '/' -%}{%- endif -%}
+{%- assign canonical_no_slash = canonical_path | remove_first: '/' -%}
+{%- assign baseurl_no_slash = site.baseurl | remove_first: '/' -%}
+{%- assign current_lang = page.lang | default: site.default_lang -%}
+
+<div class="lang-switcher"
+     data-canonical="{{ canonical_no_slash }}"
+     data-base="{{ baseurl_no_slash }}"
+     data-current="{{ current_lang }}"
+     data-default="{{ site.default_lang }}"
+     style="padding: 0.5rem 0; font-size: 0.875rem;">
+  <a data-lang="en" hreflang="en">EN</a>
+  <span style="opacity: 0.4;">|</span>
+  <a data-lang="zh-CN" hreflang="zh-CN">简体中文</a>
+  <span style="opacity: 0.4;">|</span>
+  <a data-lang="zh-TW" hreflang="zh-TW">繁體中文</a>
+</div>
+<script>
+(function () {
+  var sw = document.querySelector('.lang-switcher');
+  if (!sw) return;
+  var canonical = sw.dataset.canonical || '';
+  var base = sw.dataset.base ? '/' + sw.dataset.base : '';
+  var defaultLang = sw.dataset.default;
+  var current = sw.dataset.current;
+  sw.querySelectorAll('a[data-lang]').forEach(function (a) {
+    var lang = a.dataset.lang;
+    if (lang === current) {
+      var label = a.textContent;
+      var span = document.createElement('span');
+      span.className = 'lang-current';
+      span.style.fontWeight = '600';
+      span.textContent = label;
+      a.replaceWith(span);
+      return;
+    }
+    var prefix = lang === defaultLang ? '' : '/' + lang;
+    a.href = base + prefix + '/' + canonical;
+  });
+})();
+</script>
