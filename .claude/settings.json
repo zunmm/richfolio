@@ -1,11 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "mcp__plugin_playwright_playwright__*",
       "WebFetch(*)",
       "WebSearch",
       "Bash(npm *)",
       "Bash(gh *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(python3 *)"
     ]
   }
 }
