@@ -24,16 +24,20 @@ GitHub disables Actions on newly forked repos by default. Go to your fork → **
 
 ## Add Secrets & Variables
 
-Go to your forked repo → **Settings** → **Secrets and variables** → **Actions**.
+In your forked repo: **Settings** → **Secrets and variables** → **Actions**. This is the deployment-side checklist of what goes where — for how to obtain each API key, see [API Keys](api-keys).
 
-1. **Secrets tab** — add your API keys (`RESEND_API_KEY` is required, others are optional). See [API Keys](api-keys) for step-by-step instructions for each service.
-
-2. **Variables tab** — add:
-   - `CONFIG_JSON` — paste your full portfolio JSON (see [Configuration](configuration) for the format)
-   - `RECIPIENT_EMAIL` — your email address
+| Item | Tab | Notes |
+|---|---|---|
+| `RESEND_API_KEY` | **Secrets** | Required |
+| `NEWS_API_KEY` | **Secrets** | Optional |
+| `GEMINI_API_KEY` | **Secrets** | Optional |
+| `TELEGRAM_BOT_TOKEN` | **Secrets** | Optional |
+| `TELEGRAM_CHAT_ID` | **Secrets** | Optional |
+| `RECIPIENT_EMAIL` | **Variables** | Required — visible for easy editing |
+| `CONFIG_JSON` | **Variables** | Required — your portfolio JSON ([format](configuration)) |
 
 {: .important}
-> **For `CONFIG_JSON`:** Using a variable (instead of a secret) lets you view and edit your portfolio config directly in the GitHub UI.
+> **Why `CONFIG_JSON` is a variable, not a secret:** Variables stay readable in the GitHub UI, so you can edit your holdings directly without re-pasting the whole JSON every time. The trade-off is that anyone with read access to the repo can see your allocations — fine for a private fork, something to consider if you ever go public.
 
 ---
 

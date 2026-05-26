@@ -26,16 +26,20 @@ GitHub 默认会禁用新 Fork 仓库的 Actions。前往你的 Fork → **Actio
 
 ## 添加 Secret 和变量
 
-进入 Fork 的仓库 → **Settings** → **Secrets and variables** → **Actions**。
+在 Fork 的仓库:**Settings** → **Secrets and variables** → **Actions**。这里是部署端的"该放哪里"对照清单 — 至于如何获取各 API 密钥,请见 [API 密钥](api-keys)。
 
-1. **Secrets 标签页** — 添加你的 API 密钥(`RESEND_API_KEY` 必需,其它可选)。每项服务的分步说明请见 [API 密钥](api-keys)。
-
-2. **Variables 标签页** — 添加:
-   - `CONFIG_JSON` — 粘贴你完整的投资组合 JSON(格式见[配置说明](configuration))
-   - `RECIPIENT_EMAIL` — 你的邮箱地址
+| 项目 | 标签页 | 备注 |
+|---|---|---|
+| `RESEND_API_KEY` | **Secrets** | 必需 |
+| `NEWS_API_KEY` | **Secrets** | 可选 |
+| `GEMINI_API_KEY` | **Secrets** | 可选 |
+| `TELEGRAM_BOT_TOKEN` | **Secrets** | 可选 |
+| `TELEGRAM_CHAT_ID` | **Secrets** | 可选 |
+| `RECIPIENT_EMAIL` | **Variables** | 必需 — 可见方便日后直接编辑 |
+| `CONFIG_JSON` | **Variables** | 必需 — 你的投资组合 JSON([格式](configuration)) |
 
 {: .important}
-> **关于 `CONFIG_JSON`:** 使用变量(而非 Secret)可以让你直接在 GitHub UI 中查看和编辑投资组合配置。
+> **为什么 `CONFIG_JSON` 用 Variable 而不是 Secret:** Variable 在 GitHub UI 中是可见的,你可以直接在页面上修改持仓,不用每次都重新粘贴整段 JSON。代价是任何有仓库读取权限的人都会看到你的资产配置 — 私有 Fork 没问题,但如果以后想公开仓库就要留意。
 
 ---
 
