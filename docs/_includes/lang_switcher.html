@@ -2,6 +2,9 @@
   Compute the canonical path (no locale prefix) as a relative segment list, so polyglot's
   URL-rewrite regex (which matches /...) has nothing to mangle. We encode segments as a JSON
   array in a data attribute and let runtime JS build the hrefs.
+
+  Language switcher is a <select> dropdown so the header stays compact as we add more
+  languages — listing 6+ inline would crowd the header.
 {%- endcomment -%}
 {%- assign canonical_path = page.url -%}
 {%- for lang in site.languages -%}
@@ -18,39 +21,47 @@
 {%- assign baseurl_no_slash = site.baseurl | remove_first: '/' -%}
 {%- assign current_lang = page.lang | default: site.default_lang -%}
 
-<div class="lang-switcher"
+<div class="lang-switcher-wrap"
      data-canonical="{{ canonical_no_slash }}"
      data-base="{{ baseurl_no_slash }}"
      data-current="{{ current_lang }}"
      data-default="{{ site.default_lang }}"
-     style="display: flex; align-items: center; gap: 0.4em; font-size: 0.875rem;">
-  <a data-lang="en" hreflang="en">EN</a>
-  <span style="opacity: 0.4;">|</span>
-  <a data-lang="zh-CN" hreflang="zh-CN">简体中文</a>
-  <span style="opacity: 0.4;">|</span>
-  <a data-lang="zh-TW" hreflang="zh-TW">繁體中文</a>
+     style="display: inline-flex; align-items: center;">
+  <select class="lang-switcher"
+          aria-label="Language"
+          style="background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 4px; padding: 2px 22px 2px 8px; font-size: 0.8125rem; line-height: 1.4; cursor: pointer; opacity: 0.75; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;10&quot; height=&quot;6&quot; viewBox=&quot;0 0 10 6&quot;&gt;&lt;path d=&quot;M1 1l4 4 4-4&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.5&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/&gt;&lt;/svg&gt;'); background-repeat: no-repeat; background-position: right 6px center;">
+    <option value="en" data-hreflang="en">EN</option>
+    <option value="zh-CN" data-hreflang="zh-CN">简体中文</option>
+    <option value="zh-TW" data-hreflang="zh-TW">繁體中文</option>
+    <option value="ja" data-hreflang="ja">日本語</option>
+    <option value="ko" data-hreflang="ko">한국어</option>
+    <option value="es" data-hreflang="es">Español</option>
+  </select>
 </div>
+<style>
+  .lang-switcher:hover, .lang-switcher:focus { opacity: 1; outline: none; }
+  .lang-switcher option { color: #000; background: #fff; }
+</style>
 <script>
 (function () {
-  var sw = document.querySelector('.lang-switcher');
-  if (!sw) return;
-  var canonical = sw.dataset.canonical || '';
-  var base = sw.dataset.base ? '/' + sw.dataset.base : '';
-  var defaultLang = sw.dataset.default;
-  var current = sw.dataset.current;
-  sw.querySelectorAll('a[data-lang]').forEach(function (a) {
-    var lang = a.dataset.lang;
-    if (lang === current) {
-      var label = a.textContent;
-      var span = document.createElement('span');
-      span.className = 'lang-current';
-      span.style.fontWeight = '600';
-      span.textContent = label;
-      a.replaceWith(span);
-      return;
-    }
+  var wrap = document.querySelector('.lang-switcher-wrap');
+  if (!wrap) return;
+  var select = wrap.querySelector('.lang-switcher');
+  if (!select) return;
+  var canonical = wrap.dataset.canonical || '';
+  var base = wrap.dataset.base ? '/' + wrap.dataset.base : '';
+  var defaultLang = wrap.dataset.default;
+  var current = wrap.dataset.current;
+
+  // Mark the current language as selected
+  select.value = current;
+
+  // Navigate when the user picks a different language
+  select.addEventListener('change', function () {
+    var lang = select.value;
+    if (lang === current) return;
     var prefix = lang === defaultLang ? '' : '/' + lang;
-    a.href = base + prefix + '/' + canonical;
+    window.location.href = base + prefix + '/' + canonical;
   });
 })();
 </script>

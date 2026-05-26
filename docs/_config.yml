@@ -26,7 +26,7 @@ plugins:
   - jekyll-remote-theme
   - jekyll-polyglot
 
-languages: ["en", "zh-CN", "zh-TW"]
+languages: ["en", "zh-CN", "zh-TW", "ja", "ko", "es"]
 default_lang: "en"
 exclude_from_localization: ["icon.png", "feature-image.png", "screenshots", "mockups", "analysis", "assets"]
 parallel_localization: true
