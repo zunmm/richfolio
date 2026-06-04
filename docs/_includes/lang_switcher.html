@@ -5,6 +5,12 @@
 
   Language switcher is a <select> dropdown so the header stays compact as we add more
   languages — listing 6+ inline would crowd the header.
+
+  IMPORTANT: do NOT use JS line comments (// ...) inside the inline <script> below.
+  Jekyll's HTML compression collapses the whole script onto a single line, which turns
+  every // into a comment that swallows the rest of the code and breaks the parser
+  with "Unexpected end of input". Block comments are also risky if they nest. Keep
+  the inline script comment-free; put any explanation up here in this Liquid block.
 {%- endcomment -%}
 {%- assign canonical_path = page.url -%}
 {%- for lang in site.languages -%}
@@ -52,11 +58,7 @@
   var base = wrap.dataset.base ? '/' + wrap.dataset.base : '';
   var defaultLang = wrap.dataset.default;
   var current = wrap.dataset.current;
-
-  // Mark the current language as selected
   select.value = current;
-
-  // Navigate when the user picks a different language
   select.addEventListener('change', function () {
     var lang = select.value;
     if (lang === current) return;
