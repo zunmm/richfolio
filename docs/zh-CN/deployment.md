@@ -32,11 +32,14 @@ GitHub 默认会禁用新 Fork 仓库的 Actions。前往你的 Fork → **Actio
 |---|---|---|
 | `RESEND_API_KEY` | **Secrets** | 必需 |
 | `NEWS_API_KEY` | **Secrets** | 可选 |
-| `GEMINI_API_KEY` | **Secrets** | 可选 |
+| `GEMINI_API_KEY` | **Secrets** | 可选 — AI 提供方(Google Gemini) |
+| `ANTHROPIC_API_KEY` | **Secrets** | 可选 — AI 提供方(Anthropic Claude)。与 Gemini 同时配置可启用多 AI 模式 |
 | `TELEGRAM_BOT_TOKEN` | **Secrets** | 可选 |
 | `TELEGRAM_CHAT_ID` | **Secrets** | 可选 |
 | `RECIPIENT_EMAIL` | **Variables** | 必需 — 可见方便日后直接编辑 |
 | `CONFIG_JSON` | **Variables** | 必需 — 你的投资组合 JSON([格式](configuration)) |
+| `CLAUDE_MODEL` | **Variables** | 可选 — 覆盖 Claude 模型(默认:`claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | **Variables** | 可选 — 在 STRONG BUY 分析页面强制使用 `gemini` 或 `claude` |
 
 {: .important}
 > **为什么 `CONFIG_JSON` 用 Variable 而不是 Secret:** Variable 在 GitHub UI 中是可见的,你可以直接在页面上修改持仓,不用每次都重新粘贴整段 JSON。代价是任何有仓库读取权限的人都会看到你的资产配置 — 私有 Fork 没问题,但如果以后想公开仓库就要留意。

@@ -32,11 +32,14 @@ GitHub 預設會停用新 Fork 儲存庫的 Actions。前往你的 Fork → **Ac
 |---|---|---|
 | `RESEND_API_KEY` | **Secrets** | 必要 |
 | `NEWS_API_KEY` | **Secrets** | 可選 |
-| `GEMINI_API_KEY` | **Secrets** | 可選 |
+| `GEMINI_API_KEY` | **Secrets** | 可選 — AI 提供者(Google Gemini) |
+| `ANTHROPIC_API_KEY` | **Secrets** | 可選 — AI 提供者(Anthropic Claude)。與 Gemini 同時設定可啟用多 AI 模式 |
 | `TELEGRAM_BOT_TOKEN` | **Secrets** | 可選 |
 | `TELEGRAM_CHAT_ID` | **Secrets** | 可選 |
 | `RECIPIENT_EMAIL` | **Variables** | 必要 — 可見方便日後直接編輯 |
 | `CONFIG_JSON` | **Variables** | 必要 — 你的投資組合 JSON([格式](configuration)) |
+| `CLAUDE_MODEL` | **Variables** | 可選 — 覆寫 Claude 模型(預設:`claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | **Variables** | 可選 — 強制 STRONG BUY 分析頁面使用 `gemini` 或 `claude` |
 
 {: .important}
 > **為什麼 `CONFIG_JSON` 用 Variable 而不是 Secret:** Variable 在 GitHub UI 中是可見的,你可以直接在頁面上修改持倉,不用每次都重新貼整段 JSON。代價是任何有儲存庫讀取權限的人都會看到你的資產配置 — 對私有 Fork 沒問題,但如果之後要公開儲存庫就要留意。

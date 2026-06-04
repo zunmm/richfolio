@@ -32,11 +32,14 @@ En tu repo forkeado: **Settings** → **Secrets and variables** → **Actions**.
 |---|---|---|
 | `RESEND_API_KEY` | **Secrets** | Requerido |
 | `NEWS_API_KEY` | **Secrets** | Opcional |
-| `GEMINI_API_KEY` | **Secrets** | Opcional |
+| `GEMINI_API_KEY` | **Secrets** | Opcional — proveedor de IA (Google Gemini) |
+| `ANTHROPIC_API_KEY` | **Secrets** | Opcional — proveedor de IA (Anthropic Claude). Combínalo con Gemini para el modo multi-IA |
 | `TELEGRAM_BOT_TOKEN` | **Secrets** | Opcional |
 | `TELEGRAM_CHAT_ID` | **Secrets** | Opcional |
 | `RECIPIENT_EMAIL` | **Variables** | Requerido — visible para edición fácil |
 | `CONFIG_JSON` | **Variables** | Requerido — el JSON de tu portafolio ([formato](configuration)) |
+| `CLAUDE_MODEL` | **Variables** | Opcional — sobrescribe el modelo de Claude (por defecto: `claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | **Variables** | Opcional — fuerza `gemini` o `claude` para la página de análisis de STRONG BUY |
 
 {: .important}
 > **Por qué `CONFIG_JSON` es una variable, no un secret:** Las Variables permanecen legibles en la UI de GitHub, así puedes editar tus tenencias directamente sin re-pegar el JSON entero cada vez. La contrapartida es que cualquiera con acceso de lectura al repo puede ver tus asignaciones — bien para un fork privado, algo a considerar si alguna vez lo haces público.

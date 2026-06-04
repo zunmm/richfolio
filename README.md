@@ -66,7 +66,7 @@ What Richfolio does is **monitor your portfolio daily** and help you decide **wh
 2. **Add config** — go to Settings → Secrets and variables → Actions:
    - **Variables** tab: `CONFIG_JSON` (portfolio config) + `RECIPIENT_EMAIL` (your email)
    - **Secrets** tab: `RESEND_API_KEY` — for email delivery
-   - Optionally: `NEWS_API_KEY`, `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+   - Optionally: `NEWS_API_KEY`, `GEMINI_API_KEY` and/or `ANTHROPIC_API_KEY` (set both for multi-AI mode — scores averaged with per-AI breakdown), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 3. **Run** — trigger manually from Actions → Portfolio Monitor → Run workflow, or wait for the daily cron (8am AEST)
 
 That's it — no local setup required. See the [full setup guide](https://furic.github.io/richfolio/getting-started) for detailed instructions on each API key.

@@ -69,14 +69,19 @@ In GitHub Actions, `config.json` is written from the `CONFIG_JSON` Actions varia
 
 - `RESEND_API_KEY` — from resend.com
 - `NEWS_API_KEY` — from newsapi.org (optional)
-- `GEMINI_API_KEY` — from aistudio.google.com (optional)
+- `GEMINI_API_KEY` — from aistudio.google.com (optional AI provider — Google Gemini)
+- `ANTHROPIC_API_KEY` — from console.anthropic.com (optional AI provider — Anthropic Claude)
 - `TELEGRAM_BOT_TOKEN` — from @BotFather (optional)
 - `TELEGRAM_CHAT_ID` — from @userinfobot (optional)
+
+When both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, multi-AI mode auto-engages: providers run concurrently, scores average per ticker, per-AI breakdown shown in email/Telegram, STRONG BUY requires unanimous agreement. See `src/aiOrchestrator.ts` and `src/aiAggregation.ts`.
 
 ## GitHub Actions Variables
 
 - `CONFIG_JSON` — full contents of config.json (uses Actions Variables instead of Secrets for easy viewing/editing)
 - `RECIPIENT_EMAIL` — email address for briefs (variable, not secret — easy to view/edit)
+- `CLAUDE_MODEL` — optional override for Claude model (default: `claude-sonnet-4-6`; cheaper option: `claude-haiku-4-5-20251001`)
+- `AI_DETAILED_PROVIDER` — optional, force `gemini` or `claude` for the STRONG BUY detailed analysis page (default: first available)
 
 ## Key Gotchas
 

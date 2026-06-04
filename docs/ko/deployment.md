@@ -32,11 +32,14 @@ Fork한 저장소에서: **Settings** → **Secrets and variables** → **Action
 |---|---|---|
 | `RESEND_API_KEY` | **Secrets** | 필수 |
 | `NEWS_API_KEY` | **Secrets** | 선택 |
-| `GEMINI_API_KEY` | **Secrets** | 선택 |
+| `GEMINI_API_KEY` | **Secrets** | 선택 — AI 제공자 (Google Gemini) |
+| `ANTHROPIC_API_KEY` | **Secrets** | 선택 — AI 제공자 (Anthropic Claude). Gemini와 함께 설정하면 멀티 AI 모드 |
 | `TELEGRAM_BOT_TOKEN` | **Secrets** | 선택 |
 | `TELEGRAM_CHAT_ID` | **Secrets** | 선택 |
 | `RECIPIENT_EMAIL` | **Variables** | 필수 — 쉽게 편집할 수 있도록 보이는 상태 유지 |
 | `CONFIG_JSON` | **Variables** | 필수 — 포트폴리오 JSON ([형식](configuration)) |
+| `CLAUDE_MODEL` | **Variables** | 선택 — Claude 모델 재정의 (기본값: `claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | **Variables** | 선택 — STRONG BUY 분석 페이지에 `gemini` 또는 `claude` 강제 지정 |
 
 {: .important}
 > **왜 `CONFIG_JSON`을 Secret이 아닌 Variable로 두는가:** Variable은 GitHub UI에서 읽을 수 있어, 매번 전체 JSON을 다시 붙여넣지 않고도 보유 종목을 직접 편집할 수 있습니다. 단점은 저장소 읽기 권한이 있는 사람이 자산 배분을 볼 수 있다는 점입니다 — 비공개 fork라면 괜찮지만, 나중에 공개로 전환할 계획이라면 고려할 사항입니다.

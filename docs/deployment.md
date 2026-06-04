@@ -30,11 +30,14 @@ In your forked repo: **Settings** → **Secrets and variables** → **Actions**.
 |---|---|---|
 | `RESEND_API_KEY` | **Secrets** | Required |
 | `NEWS_API_KEY` | **Secrets** | Optional |
-| `GEMINI_API_KEY` | **Secrets** | Optional |
+| `GEMINI_API_KEY` | **Secrets** | Optional — AI provider (Google Gemini) |
+| `ANTHROPIC_API_KEY` | **Secrets** | Optional — AI provider (Anthropic Claude). Set with Gemini for multi-AI mode |
 | `TELEGRAM_BOT_TOKEN` | **Secrets** | Optional |
 | `TELEGRAM_CHAT_ID` | **Secrets** | Optional |
 | `RECIPIENT_EMAIL` | **Variables** | Required — visible for easy editing |
 | `CONFIG_JSON` | **Variables** | Required — your portfolio JSON ([format](configuration)) |
+| `CLAUDE_MODEL` | **Variables** | Optional — override Claude model (default: `claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | **Variables** | Optional — force `gemini` or `claude` for STRONG BUY analysis page |
 
 {: .important}
 > **Why `CONFIG_JSON` is a variable, not a secret:** Variables stay readable in the GitHub UI, so you can edit your holdings directly without re-pasting the whole JSON every time. The trade-off is that anyone with read access to the repo can see your allocations — fine for a private fork, something to consider if you ever go public.
