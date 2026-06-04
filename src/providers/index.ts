@@ -1,4 +1,5 @@
 import { geminiProvider } from "./gemini.js";
+import { claudeProvider } from "./claude.js";
 import type { AIProvider } from "./types.js";
 
 export type { AIProvider, AIProviderInput, AIBuyRecommendation } from "./types.js";
@@ -11,7 +12,7 @@ export type { AIProvider, AIProviderInput, AIBuyRecommendation } from "./types.j
 
 const ALL_PROVIDERS: AIProvider[] = [
   geminiProvider,
-  // claudeProvider, // Phase 2
+  claudeProvider,
   // openaiProvider, // future
 ];
 
