@@ -52,7 +52,19 @@ GitHub の **Variable**（Secret ではない）として追加：名前：`RECI
 
 ---
 
-## Google Gemini（AI 分析）— オプション
+## AI プロバイダ — AI 推奨を有効にするには少なくとも 1 つ必要
+
+Richfolio は 2 つの AI プロバイダをサポートしています：**Google Gemini** と **Anthropic Claude**。AI による買い推奨を利用するには、少なくとも 1 つを設定してください。**両方**を設定すると並列で実行され、スコアが平均化され、各推奨の横にプロバイダごとの内訳が表示されます。どちらも設定されていない場合は、ギャップベースの推奨にフォールバックします（AI なし）。
+
+| モード | 設定 | 出力 |
+|---|---|---|
+| **AI なし** | どちらのキーも未設定 | ギャップベースの推奨のみ |
+| **シングル AI** | 一方のキーを設定 | 従来と同じ — ティッカーごとに 1 セットのアクション＋確信度 |
+| **マルチ AI** | 両方のキーを設定 | ティッカーごとのコンセンサスアクション＋平均化された確信度。各推奨の下にプロバイダごとの内訳を表示。STRONG BUY は全プロバイダの一致が必要 |
+
+---
+
+## Google Gemini — オプション
 {: .text-yellow-200}
 
 Gemini 2.5 Flash で AI 買い推奨を提供します。
@@ -61,44 +73,47 @@ Gemini 2.5 Flash で AI 買い推奨を提供します。
 2. **Create API Key** をクリックし、Google Cloud プロジェクトを選択（または新規作成）
 3. キーをコピーし、GitHub Secret として追加 — 名前：`GEMINI_API_KEY`、値：先ほどコピーしたキー
 
-**無料枠：** 1 日 250 リクエスト、1 分あたり 10 リクエスト。Richfolio は 1 回の実行につき 1 リクエストを使用します（さらに詳細分析のために STRONG BUY ティッカー 1 つにつき 1 リクエスト）。新しいキーは有効化に数分かかることがあります（最初は 429 エラーが見えるかもしれません）。未設定またはクォータ枯渇の場合、ギャップベースの推奨にフォールバックします。
+**無料枠：** 1 日 250 リクエスト、1 分あたり 10 リクエスト。Richfolio は 1 回の実行につき 2 リクエストを使用します（Stage 1 Observe ＋ Stage 2 Decide）。さらに詳細分析のために STRONG BUY ティッカー 1 つにつき 1 リクエスト。新しいキーは有効化に数分かかることがあります（最初は 429 エラーが見えるかもしれません）。
 
 ### Gemini モデルティアに関する注記
 
 Google の価格ページでは Gemini 2.5 Pro が入力／出力トークンとも[「無料」](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)であると記載されています。しかし実際には、無料枠の Pro リクエストは使用量が少なくても頻繁に `429 RESOURCE_EXHAUSTED` エラーに当たります。Google は無料枠の実際の RPD（1 日あたりリクエスト数）上限を公表していません。サードパーティの情報源では Pro は約 100 RPD に制限されているかもしれないと示唆されていますが、実際の数字はアカウントによって異なるようで、保証はありません。
 
-**Richfolio はすべての AI 呼び出しに Gemini 2.5 Flash を使用しています**（メイン分析と詳細 STRONG BUY 分析の両方）。Flash の方が寛大で信頼性の高い無料枠クォータを持つためです。金融分析テキストにおける品質の差は無視できます。
+**Richfolio はデフォルトで Gemini 2.5 Flash を使用しています**。Flash の方が寛大で信頼性の高い無料枠クォータを持つためです。金融分析テキストにおける品質の差は無視できます。
 
-### 別の AI モデルを使う
+---
 
-有料の Gemini プランを持っているか、まったく別のプロバイダを使いたい場合、モデルは簡単に入れ替えられます。AI 呼び出しは 2 つのファイルにあります：
+## Anthropic Claude — オプション
+{: .text-yellow-200}
 
-- `src/aiAnalysis.ts` — メインの買い推奨（約 225 行目）
-- `src/detailedAnalysis.ts` — STRONG BUY の詳細分析（約 119 行目）
+Claude（デフォルトでは Sonnet 4.6）で AI 買い推奨を提供します。
 
-**Gemini Pro に切り替える**場合（有料クォータがある場合）：
+1. [console.anthropic.com](https://console.anthropic.com) にアクセスしてサインアップ
+2. **API Keys** → **Create Key** に移動し、名前を付けてキーをコピー
+3. GitHub Secret として追加 — 名前：`ANTHROPIC_API_KEY`、値：先ほどコピーしたキー
 
-```typescript
-// In both files, change:
-model: "gemini-2.5-flash",
-// To:
-model: "gemini-2.5-pro",
-```
+**料金：** Anthropic には Gemini のような恒久的な無料枠はありませんが、新規アカウントには少額のスタータークレジットが付与されます。また、Richfolio のワークロードでの Sonnet 利用は通常 1 日あたり数セント程度です。コストを最小化するには `CLAUDE_MODEL=claude-haiku-4-5-20251001` を設定してください（Haiku ティアは大幅に安価ですが、このワークロードを十分にこなせます）。
 
-**Claude や他のプロバイダに切り替える**場合、`@google/genai` の呼び出しをプロバイダの SDK に置き換えます。例えば Anthropic SDK の場合：
+### Gemini との併用（マルチ AI モード）
 
-```typescript
-// npm install @anthropic-ai/sdk
-import Anthropic from "@anthropic-ai/sdk";
-const client = new Anthropic(); // uses ANTHROPIC_API_KEY env var
-const response = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  max_tokens: 1024,
-  messages: [{ role: "user", content: prompt }],
-});
-```
+`GEMINI_API_KEY` と `ANTHROPIC_API_KEY` の両方が設定されている場合、Richfolio は分析ごとに両プロバイダを並行実行し、結果を集約します：
 
-プロンプトと JSON 解析ロジックは同じまま — API 呼び出しだけが変わります。プロバイダの API キーを GitHub Secret として追加してください。
+- ティッカーごとの**コンセンサスアクション**を多数決で決定（同数の場合は確信度の合計で同点を解消）
+- **平均化された確信度**を目立たせて表示し、その下にプロバイダごとのスコアを表示
+- **STRONG BUY は全プロバイダの一致が必要** — どれか 1 つでも反対した場合、コンセンサスは BUY に上限が下がります
+- アクションの隣に**合意ラベル**（unanimous／majority／split）をバッジで表示
+
+実行中にあるプロバイダが失敗した場合（レート制限、クォータ枯渇、ネットワークエラー）、もう一方のプロバイダが単独で続行し、その回のメール／Telegram はシングル AI 表示にフォールバックします。
+
+### STRONG BUY 詳細分析ページを生成するプロバイダの選択
+
+両方のプロバイダが有効な場合、STRONG BUY ごとの分析ページ（「More Details」リンク）は単一のプロバイダによって生成されます — デフォルトではレジストリ順で最初に利用可能なもの（Gemini、次に Claude）。次の環境変数で上書きできます：
+
+| 環境変数 | 値 | 効果 |
+|---|---|---|
+| `AI_DETAILED_PROVIDER` | `gemini` | 詳細分析を Gemini に強制（GEMINI_API_KEY の設定が必要） |
+| `AI_DETAILED_PROVIDER` | `claude` | 詳細分析を Claude に強制（ANTHROPIC_API_KEY の設定が必要） |
+| `CLAUDE_MODEL` | 例：`claude-haiku-4-5-20251001` | Claude モデルを上書き（デフォルト：`claude-sonnet-4-6`） |
 
 ---
 
@@ -137,6 +152,9 @@ Telegram アカウントに凝縮されたサマリーを配信します。
 | `RESEND_API_KEY` | はい | メール配信 |
 | `RECIPIENT_EMAIL` | はい | あなたのメールアドレス |
 | `NEWS_API_KEY` | いいえ | ニュースヘッドライン |
-| `GEMINI_API_KEY` | いいえ | AI 買い推奨 |
+| `GEMINI_API_KEY` | いいえ | AI プロバイダ（Google Gemini） |
+| `ANTHROPIC_API_KEY` | いいえ | AI プロバイダ（Anthropic Claude） |
 | `TELEGRAM_BOT_TOKEN` | いいえ | Telegram 配信 |
 | `TELEGRAM_CHAT_ID` | いいえ | Telegram 配信 |
+| `CLAUDE_MODEL` | いいえ | Claude モデルを上書き（デフォルト：`claude-sonnet-4-6`） |
+| `AI_DETAILED_PROVIDER` | いいえ | STRONG BUY 分析ページに `gemini` または `claude` を強制 |

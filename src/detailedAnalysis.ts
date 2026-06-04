@@ -1,12 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { AllocationReport } from "./analyze.js";
 import type { QuoteData } from "./fetchPrices.js";
 import type { TechnicalData } from "./fetchTechnicals.js";
 import type { AIBuyRecommendation } from "./aiAnalysis.js";
 import { defaultCurrency } from "./config.js";
 import { formatMoney } from "./util.js";
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+import { buildActiveProviders } from "./providers/index.js";
 
 // ── Types ───────────────────────────────────────────────────────────
 export interface DetailedAnalysis {
@@ -15,8 +15,10 @@ export interface DetailedAnalysis {
   risks: string[];
 }
 
+type DetailedProviderId = "gemini" | "claude";
+
 // ── Gemini response schema ──────────────────────────────────────────
-const detailedSchema = {
+const geminiDetailedSchema = {
   type: Type.OBJECT,
   properties: {
     buyThesis: {
@@ -33,7 +35,40 @@ const detailedSchema = {
   propertyOrdering: ["buyThesis", "risks"],
 };
 
-// ── Build per-ticker prompt ─────────────────────────────────────────
+// ── Claude tool schema (JSON Schema; portable across SDKs) ─────────
+const claudeDetailedSchema = {
+  type: "object" as const,
+  properties: {
+    buyThesis: {
+      type: "string",
+      description: "3-4 paragraph detailed buy thesis (150-200 words total).",
+    },
+    risks: {
+      type: "array",
+      items: { type: "string" },
+      description: "3-4 specific risk factors, each 1 sentence.",
+    },
+  },
+  required: ["buyThesis", "risks"],
+};
+
+// ── Provider selection ─────────────────────────────────────────────
+// Pick which provider generates the detailed STRONG BUY thesis. Priority:
+//   1. AI_DETAILED_PROVIDER env var (explicit override; must be installed)
+//   2. First available provider from buildActiveProviders() (deterministic order)
+// Returns null if no usable provider — caller treats as "skip detailed analysis".
+function pickDetailedProvider(): DetailedProviderId | null {
+  const override = process.env.AI_DETAILED_PROVIDER?.toLowerCase();
+  if (override === "gemini" && process.env.GEMINI_API_KEY) return "gemini";
+  if (override === "claude" && process.env.ANTHROPIC_API_KEY) return "claude";
+
+  const active = buildActiveProviders();
+  const first = active[0]?.id;
+  if (first === "gemini" || first === "claude") return first;
+  return null;
+}
+
+// ── Build per-ticker prompt (shared across providers) ───────────────
 function buildDetailedPrompt(
   ticker: string,
   quote: QuoteData,
@@ -144,6 +179,41 @@ function buildDetailedPrompt(
   return lines.join("\n");
 }
 
+// ── SDK calls (one per provider) ───────────────────────────────────
+async function callGemini(prompt: string): Promise<{ buyThesis?: string; risks?: string[] }> {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: geminiDetailedSchema },
+  });
+  return JSON.parse(response.text ?? "{}") as { buyThesis?: string; risks?: string[] };
+}
+
+async function callClaude(prompt: string): Promise<{ buyThesis?: string; risks?: string[] }> {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
+  const response = await client.messages.create({
+    model,
+    max_tokens: 2048,
+    tools: [
+      {
+        name: "submit_detailed_analysis",
+        description: "Submit the structured detailed buy thesis + risks.",
+        input_schema: claudeDetailedSchema,
+      },
+    ],
+    tool_choice: { type: "tool", name: "submit_detailed_analysis" },
+    messages: [{ role: "user", content: prompt }],
+  });
+  for (const block of response.content) {
+    if (block.type === "tool_use" && block.name === "submit_detailed_analysis") {
+      return block.input as { buyThesis?: string; risks?: string[] };
+    }
+  }
+  return {};
+}
+
 // ── Fetch detailed analyses for STRONG BUY tickers ──────────────────
 export async function fetchDetailedAnalyses(
   strongBuyTickers: string[],
@@ -153,11 +223,15 @@ export async function fetchDetailedAnalyses(
   report: AllocationReport,
   macroContext: string = "",
 ): Promise<Record<string, DetailedAnalysis>> {
-  if (!GEMINI_API_KEY || strongBuyTickers.length === 0) return {};
+  if (strongBuyTickers.length === 0) return {};
 
-  console.log("Generating detailed analysis for STRONG BUY tickers...");
+  const providerId = pickDetailedProvider();
+  if (!providerId) {
+    console.log("No AI provider available for detailed analysis — skipping");
+    return {};
+  }
 
-  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  console.log(`Generating detailed analysis for STRONG BUY tickers (${providerId})...`);
   const recMap = new Map(aiRecs.map((r) => [r.ticker, r]));
   const result: Record<string, DetailedAnalysis> = {};
 
@@ -175,20 +249,7 @@ export async function fetchDetailedAnalyses(
         report,
         macroContext,
       );
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: detailedSchema,
-        },
-      });
-
-      const parsed = JSON.parse(response.text ?? "{}") as {
-        buyThesis?: string;
-        risks?: string[];
-      };
+      const parsed = providerId === "claude" ? await callClaude(prompt) : await callGemini(prompt);
 
       if (parsed.buyThesis) {
         result[ticker] = {

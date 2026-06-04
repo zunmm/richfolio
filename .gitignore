@@ -8,3 +8,6 @@ state/
 _site/
 docs/.jekyll-cache/
 docs/Gemfile.lock
+
+# Playwright MCP scratch
+.playwright-mcp/

@@ -52,7 +52,19 @@ Resend 负责投递 HTML 邮件报告。
 
 ---
 
-## Google Gemini(AI 分析)— 可选
+## AI 服务商 — 启用 AI 建议至少需要一个
+
+Richfolio 支持两家 AI 服务商:**Google Gemini** 和 **Anthropic Claude**。至少设置其中一个即可启用 AI 买入建议。**两个都设置**则会并行运行 — 分数取平均,并在每条建议旁显示每家 AI 的详细拆解。两个都不设置时,Richfolio 会回退到基于缺口的建议(不使用 AI)。
+
+| 模式 | 配置 | 输出 |
+|---|---|---|
+| **不使用 AI** | 两个密钥都未设置 | 仅基于缺口的建议 |
+| **单 AI** | 设置其中一个 | 与现状一致 — 每个标的一组操作 + 置信度 |
+| **多 AI** | 两个都设置 | 每个标的取共识操作 + 平均置信度;每条建议下显示每家 AI 的拆解;STRONG BUY 要求全体一致 |
+
+---
+
+## Google Gemini — 可选
 {: .text-yellow-200}
 
 由 Gemini 2.5 Flash 驱动的 AI 买入建议。
@@ -61,44 +73,47 @@ Resend 负责投递 HTML 邮件报告。
 2. 点击 **Create API Key**,选择一个 Google Cloud 项目(或新建一个)
 3. 复制密钥并添加为 GitHub Secret — 名称:`GEMINI_API_KEY`,值:刚才复制的密钥
 
-**免费额度:** 每日 250 次请求,每分钟 10 次。Richfolio 每次运行使用 1 次请求(每个 STRONG BUY 标的额外用 1 次做详细分析)。新密钥可能需要几分钟才能激活(你可能先看到 429 错误)。若未设置或额度用尽,会回退到基于缺口的建议。
+**免费额度:** 每日 250 次请求,每分钟 10 次。Richfolio 每次运行使用 2 次请求(Stage 1 Observe + Stage 2 Decide),每个 STRONG BUY 标的另外增加 1 次用于详细分析。新密钥可能需要几分钟才能激活(你可能先看到 429 错误)。
 
 ### 关于 Gemini 模型层级的说明
 
 Google 的定价页面声明 Gemini 2.5 Pro 对输入和输出 token 都是["免费"](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro)。实际使用中,免费层的 Pro 请求经常碰到 `429 RESOURCE_EXHAUSTED` — 即使用量很低也会。Google 没有公布免费层的实际 RPD(每日请求数)上限;第三方资料估计 Pro 大约限制在 100 RPD,但实际数字似乎因账号而异且无保证。
 
-**Richfolio 所有 AI 调用都使用 Gemini 2.5 Flash**(主分析和 STRONG BUY 详细分析都是),因为 Flash 的免费额度更慷慨且更稳定。对金融分析文本来说,质量差异可以忽略。
+**Richfolio 默认使用 Gemini 2.5 Flash**,因为 Flash 的免费额度更慷慨且更稳定。对金融分析文本来说,质量差异可以忽略。
 
-### 使用其它 AI 模型
+---
 
-如果你有付费的 Gemini 计划或想完全换成另一家服务商,模型很容易替换。AI 调用集中在两个文件里:
+## Anthropic Claude — 可选
+{: .text-yellow-200}
 
-- `src/aiAnalysis.ts` — 主买入建议(约第 225 行)
-- `src/detailedAnalysis.ts` — STRONG BUY 详细分析(约第 119 行)
+由 Claude(默认 Sonnet 4.6)驱动的 AI 买入建议。
 
-**切换到 Gemini Pro**(若你有付费配额):
+1. 进入 [console.anthropic.com](https://console.anthropic.com) 并注册
+2. 进入 **API Keys** → **Create Key**,起个名字并复制密钥
+3. 添加为 GitHub Secret — 名称:`ANTHROPIC_API_KEY`,值:刚才复制的密钥
 
-```typescript
-// 在两个文件中将:
-model: "gemini-2.5-flash",
-// 改为:
-model: "gemini-2.5-pro",
-```
+**价格:** Anthropic 没有像 Gemini 那样的长期免费额度,但新账号会获得少量起始信用额度,对于 Richfolio 这种工作量来说,Sonnet 通常每天只花几美分。如需进一步降低成本,可设置 `CLAUDE_MODEL=claude-haiku-4-5-20251001`(Haiku 层价格显著更低,处理此工作量仍然绰绰有余)。
 
-**切换到 Claude 或其它服务商**,你需要把 `@google/genai` 调用替换为对应服务商的 SDK。例如使用 Anthropic SDK:
+### 与 Gemini 组合(多 AI 模式)
 
-```typescript
-// npm install @anthropic-ai/sdk
-import Anthropic from "@anthropic-ai/sdk";
-const client = new Anthropic(); // 使用 ANTHROPIC_API_KEY 环境变量
-const response = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  max_tokens: 1024,
-  messages: [{ role: "user", content: prompt }],
-});
-```
+如果同时设置了 `GEMINI_API_KEY` 和 `ANTHROPIC_API_KEY`,Richfolio 每次分析都会并发运行两家服务商并聚合结果:
 
-提示词和 JSON 解析逻辑保持不变 — 只是 API 调用的方式不同。把服务商的 API 密钥添加为 GitHub Secret 即可。
+- 每个标的的**共识操作**通过多数表决决定(置信度之和作为平票时的判定依据)
+- **平均置信度**显著展示;每家 AI 的分数显示在下方
+- **STRONG BUY 要求全体一致** — 任一服务商不同意,共识就最多到 BUY
+- **一致性标签**(unanimous / majority / split)作为徽章显示在操作旁
+
+如果某家服务商在运行中失败(限流、额度用尽、网络错误),仍可用的另一家会继续单独运行,这次的邮件/Telegram 也会回退为单 AI 显示。
+
+### 选择由哪家服务商生成 STRONG BUY 详细分析页
+
+两家服务商都启用时,每个 STRONG BUY 的详细分析页(即"More Details"链接)由单一服务商生成 — 默认按注册顺序选择首个可用的(先 Gemini,再 Claude)。可通过以下方式覆盖:
+
+| 环境变量 | 取值 | 效果 |
+|---|---|---|
+| `AI_DETAILED_PROVIDER` | `gemini` | 强制使用 Gemini 生成详细分析(必须已设置 GEMINI_API_KEY) |
+| `AI_DETAILED_PROVIDER` | `claude` | 强制使用 Claude 生成详细分析(必须已设置 ANTHROPIC_API_KEY) |
+| `CLAUDE_MODEL` | 例如 `claude-haiku-4-5-20251001` | 覆盖 Claude 模型(默认:`claude-sonnet-4-6`) |
 
 ---
 
@@ -137,6 +152,9 @@ const response = await client.messages.create({
 | `RESEND_API_KEY` | 是 | 邮件投递 |
 | `RECIPIENT_EMAIL` | 是 | 你的邮箱地址 |
 | `NEWS_API_KEY` | 否 | 新闻头条 |
-| `GEMINI_API_KEY` | 否 | AI 买入建议 |
+| `GEMINI_API_KEY` | 否 | AI 服务商(Google Gemini) |
+| `ANTHROPIC_API_KEY` | 否 | AI 服务商(Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | 否 | Telegram 投递 |
 | `TELEGRAM_CHAT_ID` | 否 | Telegram 投递 |
+| `CLAUDE_MODEL` | 否 | 覆盖 Claude 模型(默认:`claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | 否 | 强制使用 `gemini` 或 `claude` 生成 STRONG BUY 详细分析页 |

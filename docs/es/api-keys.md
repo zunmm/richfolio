@@ -52,7 +52,19 @@ Provee los top headlines por ticker para el resumen diario.
 
 ---
 
-## Google Gemini (análisis de IA) — Opcional
+## Proveedores de IA — al menos uno requerido para recomendaciones con IA
+
+Richfolio soporta dos proveedores de IA: **Google Gemini** y **Anthropic Claude**. Configura al menos uno para obtener recomendaciones con IA. Configura **ambos** para correrlos en paralelo — los scores se promedian y se muestra un desglose por IA junto a cada recomendación. Si ninguno está configurado, Richfolio cae a recomendaciones basadas en brechas (sin IA).
+
+| Modo | Configuración | Salida |
+|---|---|---|
+| **Sin IA** | Ninguna clave configurada | Solo recomendaciones basadas en brechas |
+| **IA única** | Una clave configurada | Idéntico a hoy — un solo conjunto de acción + confianza por ticker |
+| **Multi-IA** | Ambas claves configuradas | Acción de consenso por ticker + confianza promediada; desglose por IA debajo de cada recomendación; STRONG BUY requiere acuerdo unánime |
+
+---
+
+## Google Gemini — Opcional
 {: .text-yellow-200}
 
 Impulsa las recomendaciones de compra con IA con Gemini 2.5 Flash.
@@ -61,44 +73,47 @@ Impulsa las recomendaciones de compra con IA con Gemini 2.5 Flash.
 2. Haz clic en **Create API Key**, selecciona un proyecto de Google Cloud (o crea uno)
 3. Copia la clave y agrégala como GitHub Secret — nombre: `GEMINI_API_KEY`, valor: la clave que acabas de copiar
 
-**Plan gratuito:** 250 requests/día, 10 requests/minuto. Richfolio usa 1 request por corrida (más 1 por ticker STRONG BUY para análisis detallado). Las claves nuevas pueden tardar unos minutos en activar su cuota (podrías ver errores 429 inicialmente). Si no está configurada o la cuota se agotó, cae a recomendaciones basadas en brechas.
+**Plan gratuito:** 250 requests/día, 10 requests/minuto. Richfolio usa 2 requests por corrida (Stage 1 Observe + Stage 2 Decide) más 1 por ticker STRONG BUY para análisis detallado. Las claves nuevas pueden tardar unos minutos en activar su cuota (podrías ver errores 429 inicialmente).
 
 ### Una nota sobre los niveles de modelo de Gemini
 
 La página de precios de Google indica que Gemini 2.5 Pro es ["Free of charge"](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro) tanto para tokens de entrada como de salida. En la práctica, sin embargo, los requests Pro del plan gratuito frecuentemente chocan con errores `429 RESOURCE_EXHAUSTED` — incluso con uso mínimo. Google no publica los límites reales de RPD (requests por día) para el plan gratuito; fuentes de terceros sugieren que Pro puede estar limitado a ~100 RPD, pero el número real parece variar por cuenta y no está garantizado.
 
-**Richfolio usa Gemini 2.5 Flash para todas las llamadas de IA** (tanto análisis principal como análisis detallado de STRONG BUY) porque Flash tiene una cuota de plan gratuito más generosa y confiable. La diferencia de calidad para texto de análisis financiero es despreciable.
+**Richfolio usa Gemini 2.5 Flash por defecto** porque Flash tiene una cuota de plan gratuito más generosa y confiable. La diferencia de calidad para texto de análisis financiero es despreciable.
 
-### Usar un modelo de IA diferente
+---
 
-Si tienes un plan Gemini de pago o quieres usar un proveedor diferente por completo, el modelo es fácil de intercambiar. Las llamadas de IA viven en dos archivos:
+## Anthropic Claude — Opcional
+{: .text-yellow-200}
 
-- `src/aiAnalysis.ts` — recomendaciones principales de compra (línea ~225)
-- `src/detailedAnalysis.ts` — análisis detallado de STRONG BUY (línea ~119)
+Impulsa las recomendaciones de compra con IA usando Claude (Sonnet 4.6 por defecto).
 
-**Para cambiar a Gemini Pro** (si tienes cuota de pago):
+1. Ve a [console.anthropic.com](https://console.anthropic.com) y regístrate
+2. Navega a **API Keys** → **Create Key**, ponle un nombre y copia la clave
+3. Agrégala como GitHub Secret — nombre: `ANTHROPIC_API_KEY`, valor: la clave que acabas de copiar
 
-```typescript
-// En ambos archivos, cambia:
-model: "gemini-2.5-flash",
-// A:
-model: "gemini-2.5-pro",
-```
+**Precios:** Anthropic no tiene un plan gratuito permanente como Gemini, pero las cuentas nuevas reciben un pequeño crédito inicial y el uso de Sonnet para la carga de Richfolio suele costar centavos por día. Para minimizar el costo, configura `CLAUDE_MODEL=claude-haiku-4-5-20251001` (el nivel Haiku es significativamente más barato y maneja esta carga muy bien).
 
-**Para cambiar a Claude u otro proveedor**, reemplazarías las llamadas a `@google/genai` con el SDK de tu proveedor. Por ejemplo, con el SDK de Anthropic:
+### Combinando con Gemini (modo multi-IA)
 
-```typescript
-// npm install @anthropic-ai/sdk
-import Anthropic from "@anthropic-ai/sdk";
-const client = new Anthropic(); // usa la variable de entorno ANTHROPIC_API_KEY
-const response = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  max_tokens: 1024,
-  messages: [{ role: "user", content: prompt }],
-});
-```
+Si tanto `GEMINI_API_KEY` como `ANTHROPIC_API_KEY` están configurados, Richfolio corre ambos proveedores concurrentemente en cada análisis y agrega los resultados:
 
-El prompt y la lógica de parseo JSON permanecen iguales — solo cambia la llamada API. Agrega la clave API de tu proveedor como GitHub Secret.
+- **Acción de consenso** por ticker mediante voto mayoritario (con desempate por suma de confianza)
+- **Confianza promediada** mostrada de forma prominente; scores por IA mostrados debajo
+- **STRONG BUY requiere acuerdo unánime** — si algún proveedor disiente, el consenso se limita a BUY
+- **Etiqueta de acuerdo** (unánime / mayoría / dividido) mostrada como badge junto a la acción
+
+Si un proveedor falla a mitad de corrida (rate limit, cuota agotada, error de red), el proveedor sobreviviente continúa solo y el correo/Telegram de esa corrida cae a la vista de IA única.
+
+### Elegir qué proveedor genera la página de análisis detallado de STRONG BUY
+
+Cuando ambos proveedores están activos, la página de análisis por STRONG BUY (el enlace "More Details") es generada por un solo proveedor — por defecto el primero disponible en orden de registro (Gemini, luego Claude). Sobrescribe con:
+
+| Variable de entorno | Valor | Efecto |
+|---|---|---|
+| `AI_DETAILED_PROVIDER` | `gemini` | Forzar Gemini para análisis detallado (debe tener GEMINI_API_KEY configurada) |
+| `AI_DETAILED_PROVIDER` | `claude` | Forzar Claude para análisis detallado (debe tener ANTHROPIC_API_KEY configurada) |
+| `CLAUDE_MODEL` | p. ej. `claude-haiku-4-5-20251001` | Sobrescribir el modelo de Claude (por defecto: `claude-sonnet-4-6`) |
 
 ---
 
@@ -137,6 +152,9 @@ Agrega ambos como GitHub Secrets:
 | `RESEND_API_KEY` | Sí | Entrega de correo |
 | `RECIPIENT_EMAIL` | Sí | Tu dirección de correo |
 | `NEWS_API_KEY` | No | Headlines de noticias |
-| `GEMINI_API_KEY` | No | Recomendaciones de compra con IA |
+| `GEMINI_API_KEY` | No | Proveedor de IA (Google Gemini) |
+| `ANTHROPIC_API_KEY` | No | Proveedor de IA (Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | No | Entrega Telegram |
 | `TELEGRAM_CHAT_ID` | No | Entrega Telegram |
+| `CLAUDE_MODEL` | No | Sobrescribir el modelo de Claude (por defecto: `claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | No | Forzar `gemini` o `claude` para la página de análisis de STRONG BUY |

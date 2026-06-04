@@ -50,7 +50,19 @@ Provides top headlines per ticker for the daily brief.
 
 ---
 
-## Google Gemini (AI Analysis) — Optional
+## AI Providers — at least one required for AI recommendations
+
+Richfolio supports two AI providers: **Google Gemini** and **Anthropic Claude**. Set at least one for AI-powered recommendations. Set **both** to run them in parallel — scores are then averaged and a per-AI breakdown is shown next to every recommendation. If neither is set, Richfolio falls back to gap-based recommendations (no AI).
+
+| Mode | Setup | Output |
+|---|---|---|
+| **No AI** | Neither key set | Gap-based recommendations only |
+| **Single AI** | One key set | Identical to today — one set of action + confidence per ticker |
+| **Multi-AI** | Both keys set | Per-ticker consensus action + averaged confidence; per-AI breakdown shown beneath each rec; STRONG BUY requires unanimous agreement |
+
+---
+
+## Google Gemini — Optional
 {: .text-yellow-200}
 
 Powers the AI buy recommendations with Gemini 2.5 Flash.
@@ -59,44 +71,47 @@ Powers the AI buy recommendations with Gemini 2.5 Flash.
 2. Click **Create API Key**, select a Google Cloud project (or create one)
 3. Copy the key and add as a GitHub Secret — name: `GEMINI_API_KEY`, value: the key you just copied
 
-**Free tier:** 250 requests/day, 10 requests/minute. Richfolio uses 1 request per run (plus 1 per STRONG BUY ticker for detailed analysis). New keys may take a few minutes for quota to activate (you might see 429 errors initially). If not set or quota exhausted, falls back to gap-based recommendations.
+**Free tier:** 250 requests/day, 10 requests/minute. Richfolio uses 2 requests per run (Stage 1 Observe + Stage 2 Decide) plus 1 per STRONG BUY ticker for detailed analysis. New keys may take a few minutes for quota to activate (you might see 429 errors initially).
 
 ### A note on Gemini model tiers
 
 Google's pricing page states that Gemini 2.5 Pro is ["Free of charge"](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-pro) for both input and output tokens. In practice, however, free-tier Pro requests frequently hit `429 RESOURCE_EXHAUSTED` errors — even with minimal usage. Google does not publish the actual RPD (requests per day) limits for the free tier; third-party sources suggest Pro may be capped at ~100 RPD, but the real number appears to vary by account and is not guaranteed.
 
-**Richfolio uses Gemini 2.5 Flash for all AI calls** (both main analysis and detailed STRONG BUY analysis) because Flash has a more generous and reliable free-tier quota. The quality difference for financial analysis text is negligible.
+**Richfolio uses Gemini 2.5 Flash by default** because Flash has a more generous and reliable free-tier quota. The quality difference for financial analysis text is negligible.
 
-### Using a different AI model
+---
 
-If you have a paid Gemini plan or want to use a different provider entirely, the model is easy to swap. The AI calls live in two files:
+## Anthropic Claude — Optional
+{: .text-yellow-200}
 
-- `src/aiAnalysis.ts` — main buy recommendations (line ~225)
-- `src/detailedAnalysis.ts` — detailed STRONG BUY analysis (line ~119)
+Powers the AI buy recommendations with Claude (Sonnet 4.6 by default).
 
-**To switch to Gemini Pro** (if you have paid quota):
+1. Go to [console.anthropic.com](https://console.anthropic.com) and sign up
+2. Navigate to **API Keys** → **Create Key**, give it a name, copy the key
+3. Add as a GitHub Secret — name: `ANTHROPIC_API_KEY`, value: the key you just copied
 
-```typescript
-// In both files, change:
-model: "gemini-2.5-flash",
-// To:
-model: "gemini-2.5-pro",
-```
+**Pricing:** Anthropic does not have a permanent free tier like Gemini, but new accounts receive a small starter credit and Sonnet usage for Richfolio's workload is typically cents per day. To minimise cost, set `CLAUDE_MODEL=claude-haiku-4-5-20251001` (the Haiku tier is significantly cheaper while still handling this workload well).
 
-**To switch to Claude or another provider**, you would replace the `@google/genai` calls with your provider's SDK. For example, with the Anthropic SDK:
+### Combining with Gemini (multi-AI mode)
 
-```typescript
-// npm install @anthropic-ai/sdk
-import Anthropic from "@anthropic-ai/sdk";
-const client = new Anthropic(); // uses ANTHROPIC_API_KEY env var
-const response = await client.messages.create({
-  model: "claude-sonnet-4-20250514",
-  max_tokens: 1024,
-  messages: [{ role: "user", content: prompt }],
-});
-```
+If both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, Richfolio runs both providers concurrently on every analysis and aggregates the results:
 
-The prompt and JSON parsing logic stay the same — only the API call changes. Add your provider's API key as a GitHub Secret.
+- **Consensus action** per ticker via majority vote (with confidence-sum tiebreaker)
+- **Averaged confidence** displayed prominently; per-AI scores shown beneath
+- **STRONG BUY requires unanimous agreement** — if any provider dissents, the consensus caps at BUY
+- **Agreement label** (unanimous / majority / split) shown as a badge next to the action
+
+If a provider fails mid-run (rate-limited, quota exhausted, network error), the surviving provider continues alone and the email/Telegram for that run falls back to single-AI display.
+
+### Choosing which provider generates the detailed STRONG BUY analysis page
+
+When both providers are active, the per-STRONG-BUY analysis page (the "More Details" link) is generated by a single provider — by default the first available one in registry order (Gemini, then Claude). Override with:
+
+| Env var | Value | Effect |
+|---|---|---|
+| `AI_DETAILED_PROVIDER` | `gemini` | Force Gemini for detailed analysis (must have GEMINI_API_KEY set) |
+| `AI_DETAILED_PROVIDER` | `claude` | Force Claude for detailed analysis (must have ANTHROPIC_API_KEY set) |
+| `CLAUDE_MODEL` | e.g. `claude-haiku-4-5-20251001` | Override Claude model (default: `claude-sonnet-4-6`) |
 
 ---
 
@@ -135,6 +150,9 @@ Add both as GitHub Secrets:
 | `RESEND_API_KEY` | Yes | Email delivery |
 | `RECIPIENT_EMAIL` | Yes | Your email address |
 | `NEWS_API_KEY` | No | News headlines |
-| `GEMINI_API_KEY` | No | AI buy recommendations |
+| `GEMINI_API_KEY` | No | AI provider (Google Gemini) |
+| `ANTHROPIC_API_KEY` | No | AI provider (Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram delivery |
 | `TELEGRAM_CHAT_ID` | No | Telegram delivery |
+| `CLAUDE_MODEL` | No | Override Claude model (default: `claude-sonnet-4-6`) |
+| `AI_DETAILED_PROVIDER` | No | Force `gemini` or `claude` for the STRONG BUY analysis page |
