@@ -10,6 +10,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Claude](https://img.shields.io/badge/Anthropic_Claude-Sonnet_4.6-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/claude)
 [![npm](https://img.shields.io/npm/v/richfolio?logo=npm&logoColor=white)](https://www.npmjs.com/package/richfolio)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Cost](https://img.shields.io/badge/Cost-%240%2Fmonth-2ecc71)](https://furic.github.io/richfolio/features)
@@ -37,11 +38,12 @@ What Richfolio does is **monitor your portfolio daily** and help you decide **wh
 - **Richfolio brings the signals** — buy recommendations, limit order prices, and detailed analysis
 - **You make the final call** — every purchase decision is yours; the tool only suggests
 
-**No coding skill required.** Fork the repo, spend ~10 minutes registering free API accounts (Resend, NewsAPI, Gemini), paste your keys into GitHub Settings, and you're done. Everything runs automatically via GitHub Actions at $0/month.
+**No coding skill required.** Fork the repo, spend ~10 minutes registering free API accounts (Resend, NewsAPI, and either Gemini or Anthropic Claude — or both, for multi-AI mode), paste your keys into GitHub Settings, and you're done. Everything runs automatically via GitHub Actions at $0/month with Gemini.
 
 ## Features
 
-- **Two-Stage AI Analysis** — Gemini-powered Think/Plan framework: Stage 1 extracts structured observations (signals, risks, summaries), Stage 2 applies decision rules to produce ranked recommendations with confidence scores. Inspired by [OpenAlice](https://github.com/TraderAlice/OpenAlice)'s cognitive architecture. STRONG BUY tickers get a **"More Details"** link to a dedicated analysis page with interactive chart, buy thesis, risk analysis, and full metrics
+- **Multi-AI Mode (Gemini + Claude)** — set both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` to run both providers concurrently on every analysis. Scores aggregate per ticker with a per-AI breakdown shown beneath each recommendation; STRONG BUY requires unanimous agreement (any dissent caps at BUY). Set only one key for identical single-AI behaviour. Pluggable architecture — adding a third provider is ~50 lines via the `AIProvider` interface
+- **Two-Stage AI Analysis** — Think/Plan framework: Stage 1 extracts structured observations (signals, risks, summaries), Stage 2 applies decision rules to produce ranked recommendations with confidence scores. Runs on either Gemini 2.5 Flash or Claude Sonnet 4.6, or both in parallel. Inspired by [OpenAlice](https://github.com/TraderAlice/OpenAlice)'s cognitive architecture. STRONG BUY tickers get a **"More Details"** link to a dedicated analysis page with interactive chart, buy thesis, risk analysis, and full metrics
 - **Earnings Calendar Guard** — automatically detects upcoming earnings dates and caps recommendations (≤3 days → HOLD, ≤7 days → no STRONG BUY) to avoid asymmetric risk
 - **Post-AI Guard Pipeline** — 6 programmatic safety checks validate every AI recommendation before delivery: bond ETF caps, earnings proximity, STRONG BUY criteria enforcement, max 2 STRONG BUY limit, confidence sanity, and buy value sanity
 - **Value Investing Framework** — AI rates individual stocks A–D based on ROE, debt/equity, FCF, earnings growth, and analyst targets (data from Yahoo Finance, zero extra API calls)
@@ -102,7 +104,8 @@ npm run smoke     # Live API smoke tests (requires network + config.json)
 | Runtime | Node.js + TypeScript (tsx) | Free |
 | Prices & Fundamentals | Yahoo Finance (yahoo-finance2) | Free |
 | News | NewsAPI.org | Free (100 req/day) |
-| AI Analysis | Google Gemini 2.5 Flash | Free (250 req/day) |
+| AI Analysis (default) | Google Gemini 2.5 Flash | Free (250 req/day) |
+| AI Analysis (optional) | Anthropic Claude Sonnet 4.6 | Pay-as-you-go (≈ cents/day; cheaper with `CLAUDE_MODEL=claude-haiku-4-5-20251001`) |
 | Email | Resend.com | Free (3,000/month) |
 | Telegram | Telegram Bot API | Free |
 | Scheduler | GitHub Actions | Free (cron) |
@@ -118,19 +121,27 @@ richfolio/
 │   ├── fetchTechnicals.ts # Yahoo Finance chart: SMA50, SMA200, RSI, MACD, Bollinger Bands, ATR, Stochastic, OBV, momentum
 │   ├── fetchNews.ts       # NewsAPI: headlines per ticker + Gemini sentiment scoring
 │   ├── analyze.ts         # Allocation gaps, P/E signals, overlap discounts
-│   ├── aiAnalysis.ts      # Gemini AI: two-stage Think/Plan analysis, buy recs, limit prices, value ratings
+│   ├── providers/
+│   │   ├── types.ts       # AIProvider interface + canonical AIBuyRecommendation
+│   │   ├── prompts.ts     # SDK-agnostic prompt builders (Two-stage Think/Plan)
+│   │   ├── gemini.ts      # Google Gemini provider (@google/genai)
+│   │   ├── claude.ts      # Anthropic Claude provider (@anthropic-ai/sdk, tool-use)
+│   │   └── index.ts       # Provider registry — buildActiveProviders()
+│   ├── aiOrchestrator.ts  # Runs active providers concurrently, applies guards, sorts
+│   ├── aiAggregation.ts   # Multi-AI consensus action, average confidence, unanimity rule
+│   ├── aiAnalysis.ts      # Backward-compat shim over the orchestrator
 │   ├── guards.ts          # Post-AI validation pipeline: 6 sequential safety checks
-│   ├── detailedAnalysis.ts# Gemini 2.5 Flash: detailed buy thesis + risk analysis for STRONG BUY
+│   ├── detailedAnalysis.ts# Detailed buy thesis + risks for STRONG BUY (Gemini or Claude — configurable)
 │   ├── analysisUrl.ts     # Compress analysis data into URL hash for GitHub Pages
-│   ├── email.ts           # Daily HTML email template + Resend
+│   ├── email.ts           # Daily HTML email template + Resend (multi-AI per-provider breakdown)
 │   ├── intradayEmail.ts   # Intraday alert email template
 │   ├── intradayCompare.ts # Compare current vs morning baseline
-│   ├── state.ts           # Morning baseline persistence + 7-day reasoning history
+│   ├── state.ts           # Morning baseline persistence + per-provider reasoning history
 │   ├── weeklyEmail.ts     # Weekly rebalancing email template
-│   └── telegram.ts        # Telegram bot delivery (daily/intraday/weekly)
+│   └── telegram.ts        # Telegram bot delivery (multi-AI per-provider breakdown)
 ├── docs/
 │   ├── analysis/          # Static analysis page (decodes URL hash, renders with TradingView)
-│   └── *.md               # GitHub Pages documentation site
+│   └── *.md               # GitHub Pages documentation site (en, zh-CN, zh-TW, ja, ko, es)
 ├── .github/workflows/
 │   └── portfolio-monitor.yml  # Daily + intraday + weekly cron jobs
 ├── config.example.json    # Template portfolio config
@@ -147,9 +158,11 @@ CONFIG_JSON variable + GitHub Secrets
   → fetchTechnicals (Yahoo Finance chart: SMA50, SMA200, RSI, MACD, Bollinger Bands, ATR, Stochastic, OBV, momentum)
   → fetchNews (NewsAPI: top headlines per ticker + Gemini sentiment scoring)
   → analyze (allocation gaps, P/E signals, overlap discounts, portfolio metrics)
-  → aiAnalyze (Gemini two-stage: Stage 1 Observe → Stage 2 Decide + reasoning history)
-  → guards (post-AI validation: earnings guard, STRONG BUY criteria, bond cap, confidence sanity)
-  → email + telegram (deliver daily brief with value ratings, bottom signals, technicals, earnings badges)
+  → aiOrchestrator (runs active providers concurrently — Gemini and/or Claude)
+       ├─ Gemini provider — Stage 1 Observe → Stage 2 Decide → guards
+       └─ Claude provider — Stage 1 Observe → Stage 2 Decide → guards
+  → aiAggregation (consensus action, average confidence, unanimity check — multi-AI mode only)
+  → email + telegram (deliver daily brief with value ratings, bottom signals, technicals, earnings badges, per-AI breakdown when multi-AI)
 ```
 
 Weekly mode (`--weekly`) skips news and AI, producing a focused rebalancing report.
