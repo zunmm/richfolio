@@ -6,6 +6,7 @@ import type { NewsItem } from "./fetchNews.js";
 import type { TechnicalData } from "./fetchTechnicals.js";
 import type { QuoteData } from "./fetchPrices.js";
 import { escapeHtmlAttr, formatMoney } from "./util.js";
+import { hasStrongBuyVote } from "./aiAggregation.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -240,7 +241,7 @@ function buildAISection(
     ${buildProvidersBreakdown(rec)}
     ${buildTechnicalInsight(rec, technicals[rec.ticker])}
     ${
-      rec.action === "STRONG BUY" && rec.analysisUrl
+      hasStrongBuyVote(rec) && rec.analysisUrl
         ? `
     <div style="margin-top:8px;">
       <a href="${rec.analysisUrl}" style="display:inline-block;background:${S.blue}22;color:${S.blue};padding:4px 12px;border-radius:4px;font-size:11px;font-weight:bold;text-decoration:none;border:1px solid ${S.blue}44;">More Details &rarr;</a>

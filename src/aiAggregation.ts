@@ -1,5 +1,30 @@
 import type { AIBuyRecommendation, AIProvider, ProviderScore } from "./providers/types.js";
 
+// ── Detailed-analysis eligibility ──────────────────────────────────
+// A ticker qualifies for the dedicated STRONG BUY analysis page when EITHER
+// the consensus action is STRONG BUY (single-provider, or unanimous multi)
+// OR at least one provider voted STRONG BUY but the unanimity rule capped
+// the consensus at BUY (split case). In the split case we still want the
+// reader to be able to read the dissenting provider's full thesis — that's
+// often the most interesting recommendation in the brief.
+export function hasStrongBuyVote(rec: AIBuyRecommendation): boolean {
+  if (rec.action === "STRONG BUY") return true;
+  if (!rec.providers) return false;
+  return rec.providers.some((p) => p.action === "STRONG BUY");
+}
+
+// Returns the provider score that voted STRONG BUY (highest confidence if
+// multiple), or null if no provider did. Used when generating the detailed
+// analysis page so we can promote the STRONG BUY voter's view into the
+// prompt (and use that provider's SDK for the call).
+export function findStrongBuyVoter(rec: AIBuyRecommendation): ProviderScore | null {
+  if (!rec.providers) return null;
+  const voters = rec.providers
+    .filter((p) => p.action === "STRONG BUY")
+    .sort((a, b) => b.confidence - a.confidence);
+  return voters[0] ?? null;
+}
+
 // ── Per-provider results bundle ────────────────────────────────────
 // Input to aggregateMultiAI(). One entry per active provider, with the
 // full guard-validated recommendation list it produced.

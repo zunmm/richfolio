@@ -7,6 +7,7 @@ import type { AIBuyRecommendation } from "./aiAnalysis.js";
 import { defaultCurrency } from "./config.js";
 import { formatMoney } from "./util.js";
 import { buildActiveProviders } from "./providers/index.js";
+import { findStrongBuyVoter } from "./aiAggregation.js";
 
 // ── Types ───────────────────────────────────────────────────────────
 export interface DetailedAnalysis {
@@ -215,37 +216,73 @@ async function callClaude(prompt: string): Promise<{ buyThesis?: string; risks?:
 }
 
 // ── Fetch detailed analyses for STRONG BUY tickers ──────────────────
+// `eligibleTickers` includes both consensus STRONG BUYs and split cases
+// where at least one provider voted STRONG BUY but the unanimity rule
+// capped consensus at BUY. For split cases we promote the STRONG BUY
+// voter's view into the prompt and prefer that provider's SDK for the
+// call, so the resulting page reflects their actual reasoning rather
+// than a watered-down consensus.
 export async function fetchDetailedAnalyses(
-  strongBuyTickers: string[],
+  eligibleTickers: string[],
   priceData: Record<string, QuoteData>,
   technicals: Record<string, TechnicalData>,
   aiRecs: AIBuyRecommendation[],
   report: AllocationReport,
   macroContext: string = "",
 ): Promise<Record<string, DetailedAnalysis>> {
-  if (strongBuyTickers.length === 0) return {};
+  if (eligibleTickers.length === 0) return {};
 
-  const providerId = pickDetailedProvider();
-  if (!providerId) {
+  const defaultProviderId = pickDetailedProvider();
+  if (!defaultProviderId) {
     console.log("No AI provider available for detailed analysis — skipping");
     return {};
   }
 
-  console.log(`Generating detailed analysis for STRONG BUY tickers (${providerId})...`);
+  const explicitOverride = process.env.AI_DETAILED_PROVIDER?.toLowerCase();
   const recMap = new Map(aiRecs.map((r) => [r.ticker, r]));
   const result: Record<string, DetailedAnalysis> = {};
 
-  for (const ticker of strongBuyTickers) {
+  for (const ticker of eligibleTickers) {
     const quote = priceData[ticker];
     const rec = recMap.get(ticker);
     if (!quote || !rec) continue;
+
+    // Decide per-ticker which view + which provider drives the page.
+    // Consensus STRONG BUY → use rec as-is + default provider.
+    // Split (consensus BUY but a provider voted STRONG BUY) → promote that
+    // provider's view + use that provider's SDK (unless user pinned via
+    // AI_DETAILED_PROVIDER env, in which case we respect the override).
+    const sbVoter = rec.action !== "STRONG BUY" ? findStrongBuyVoter(rec) : null;
+    const promptRec: AIBuyRecommendation = sbVoter
+      ? {
+          ...rec,
+          action: sbVoter.action,
+          confidence: sbVoter.confidence,
+          reason: sbVoter.reason,
+          suggestedBuyValue: sbVoter.suggestedBuyValue,
+          suggestedLimitPrice: sbVoter.suggestedLimitPrice,
+          limitPriceReason: sbVoter.limitPriceReason,
+          valueRating: sbVoter.valueRating,
+          bottomSignal: sbVoter.bottomSignal,
+        }
+      : rec;
+
+    const providerId: DetailedProviderId =
+      explicitOverride === "gemini" || explicitOverride === "claude"
+        ? (explicitOverride as DetailedProviderId)
+        : sbVoter && (sbVoter.providerId === "gemini" || sbVoter.providerId === "claude")
+          ? (sbVoter.providerId as DetailedProviderId)
+          : defaultProviderId;
+
+    const tag = sbVoter ? ` (split — using ${providerId} STRONG BUY voter)` : ` (${providerId})`;
+    console.log(`  Detailed analysis: ${ticker}${tag}`);
 
     try {
       const prompt = buildDetailedPrompt(
         ticker,
         quote,
         technicals[ticker],
-        rec,
+        promptRec,
         report,
         macroContext,
       );
