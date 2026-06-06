@@ -96,7 +96,11 @@ function buildMessage(
             .join(" · ");
           lines.push(`   ${perAI}`);
         }
-        lines.push(`   <i>${rec.reason}</i>`);
+        // Critical: Telegram HTML mode rejects unrecognised < as malformed tags.
+        // AI-generated prose routinely contains "<30%" / "<35" / "%B < 0.15"
+        // which Telegram parses as "<30%>" and 400s the whole message. Escape
+        // every AI-supplied string before injection.
+        lines.push(`   <i>${escapeHtmlText(rec.reason)}</i>`);
         // Technical insight for STRONG BUY only
         if (rec.action === "STRONG BUY") {
           const tech = technicals[rec.ticker];
@@ -115,11 +119,11 @@ function buildMessage(
           if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
             lines.push(
               `   💡 Limit: ${fmt$(rec.suggestedLimitPrice)}` +
-                (rec.limitPriceReason ? ` — ${rec.limitPriceReason}` : ""),
+                (rec.limitPriceReason ? ` — ${escapeHtmlText(rec.limitPriceReason)}` : ""),
             );
           }
           if (rec.bottomSignal && rec.bottomSignal !== "") {
-            lines.push(`   🔻 Bottom: ${rec.bottomSignal}`);
+            lines.push(`   🔻 Bottom: ${escapeHtmlText(rec.bottomSignal)}`);
           }
           if (rec.analysisUrl) {
             lines.push(`   📋 <a href="${rec.analysisUrl}">More Details</a>`);
@@ -337,7 +341,7 @@ function buildIntradayMessage(alerts: IntradayAlert[]): string {
       const dir = alert.priceDelta < 0 ? "down" : "up";
       lines.push(`   Price ${dir} ${Math.abs(alert.priceDelta).toFixed(1)}% since morning`);
     }
-    lines.push(`   <i>${alert.reason}</i>`);
+    lines.push(`   <i>${escapeHtmlText(alert.reason)}</i>`);
     if (alert.suggestedBuyValue > 0) {
       lines.push(`   Suggested: ${fmt$(alert.suggestedBuyValue)}`);
     }
@@ -409,10 +413,10 @@ export async function sendRefreshTelegram(
   lines.push("");
   lines.push(`${actionEmoji(rec.action)} <b>${rec.action}</b> (${rec.confidence}%)`);
   lines.push(`💰 Price: ${fmt$(quote.price)} ${defaultCurrency} (${priceSource})`);
-  lines.push(`<i>${rec.reason}</i>`);
+  lines.push(`<i>${escapeHtmlText(rec.reason)}</i>`);
   if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
     lines.push(
-      `💡 Limit: ${fmt$(rec.suggestedLimitPrice)}${rec.limitPriceReason ? " — " + rec.limitPriceReason : ""}`,
+      `💡 Limit: ${fmt$(rec.suggestedLimitPrice)}${rec.limitPriceReason ? " — " + escapeHtmlText(rec.limitPriceReason) : ""}`,
     );
   }
   if (rec.suggestedBuyValue > 0) {

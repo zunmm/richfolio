@@ -78,33 +78,43 @@ export async function runAIAnalysis(input: AIProviderInput): Promise<AIBuyRecomm
   return runMulti(providers, input);
 }
 
+// Attach a single-provider `providers[]` to each rec so saveReasoningHistory
+// and renderers can iterate uniformly. Used by both the dedicated single-mode
+// path AND the multi-mode degraded fallback (where only one provider survived
+// a Promise.allSettled fan-out). Without this, renderers fall back to the
+// hard-coded default label "Gemini" — which is wrong when the survivor is
+// actually Claude.
+function attachSingleProviderMetadata(
+  recommendations: AIBuyRecommendation[],
+  provider: AIProvider,
+): void {
+  for (const rec of recommendations) {
+    rec.providers = [
+      {
+        providerId: provider.id,
+        providerLabel: provider.label,
+        providerShortLabel: provider.shortLabel,
+        action: rec.action,
+        confidence: rec.confidence,
+        reason: rec.reason,
+        suggestedBuyValue: rec.suggestedBuyValue,
+        suggestedLimitPrice: rec.suggestedLimitPrice,
+        limitPriceReason: rec.limitPriceReason,
+        valueRating: rec.valueRating,
+        bottomSignal: rec.bottomSignal,
+      },
+    ];
+  }
+}
+
 // ── Single-provider path (identical to pre-multi-AI behaviour) ─────
-// Attaches a length-1 `providers` array per rec so saveReasoningHistory and
-// renderers can iterate uniformly. Renderers gate on length ≥ 2 to switch
-// to the multi-mode UI — length 1 still presents as single-AI in emails.
 async function runSingle(
   provider: AIProvider,
   input: AIProviderInput,
 ): Promise<AIBuyRecommendation[]> {
   try {
     const recommendations = await runProvider(provider, input);
-    for (const rec of recommendations) {
-      rec.providers = [
-        {
-          providerId: provider.id,
-          providerLabel: provider.label,
-          providerShortLabel: provider.shortLabel,
-          action: rec.action,
-          confidence: rec.confidence,
-          reason: rec.reason,
-          suggestedBuyValue: rec.suggestedBuyValue,
-          suggestedLimitPrice: rec.suggestedLimitPrice,
-          limitPriceReason: rec.limitPriceReason,
-          valueRating: rec.valueRating,
-          bottomSignal: rec.bottomSignal,
-        },
-      ];
-    }
+    attachSingleProviderMetadata(recommendations, provider);
     sortByActionTier(recommendations);
     logRecommendationSummary(provider.label, recommendations);
     return recommendations;
@@ -155,6 +165,10 @@ async function runMulti(
       `Only ${runs[0].provider.label} survived — degrading to single-provider mode for this run`,
     );
     const recs = runs[0].recommendations;
+    // Critical: attach providers[] so renderers identify the survivor correctly.
+    // Without this, the email subtitle falls back to the default "Gemini" label
+    // even when Claude was the actual survivor.
+    attachSingleProviderMetadata(recs, runs[0].provider);
     sortByActionTier(recs);
     logRecommendationSummary(runs[0].provider.label, recs);
     return recs;

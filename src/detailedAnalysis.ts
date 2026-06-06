@@ -267,14 +267,34 @@ export async function fetchDetailedAnalyses(
         }
       : rec;
 
+    // Provider selection priority:
+    //   1. Explicit AI_DETAILED_PROVIDER env override (user pinned)
+    //   2. STRONG BUY voter (split case)
+    //   3. The actual provider(s) that produced this rec — important when
+    //      multi-mode degraded to single (e.g. Gemini 503'd, Claude survived):
+    //      defaultProviderId is still "gemini" by registry order, but Gemini
+    //      will fail again. Prefer the survivor.
+    //   4. Fall back to registry default.
+    const recProviderIds = (rec.providers ?? [])
+      .map((p) => p.providerId)
+      .filter((id): id is DetailedProviderId => id === "gemini" || id === "claude");
+
     const providerId: DetailedProviderId =
       explicitOverride === "gemini" || explicitOverride === "claude"
         ? (explicitOverride as DetailedProviderId)
         : sbVoter && (sbVoter.providerId === "gemini" || sbVoter.providerId === "claude")
           ? (sbVoter.providerId as DetailedProviderId)
-          : defaultProviderId;
+          : recProviderIds.length === 1
+            ? recProviderIds[0]
+            : recProviderIds.includes(defaultProviderId)
+              ? defaultProviderId
+              : (recProviderIds[0] ?? defaultProviderId);
 
-    const tag = sbVoter ? ` (split — using ${providerId} STRONG BUY voter)` : ` (${providerId})`;
+    const tag = sbVoter
+      ? ` (split — using ${providerId} STRONG BUY voter)`
+      : recProviderIds.length === 1 && recProviderIds[0] !== defaultProviderId
+        ? ` (${providerId} — only survivor of multi-AI run)`
+        : ` (${providerId})`;
     console.log(`  Detailed analysis: ${ticker}${tag}`);
 
     try {
