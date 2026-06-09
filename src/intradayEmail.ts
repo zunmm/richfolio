@@ -112,7 +112,15 @@ export function buildIntradayEmailHtml(alerts: IntradayAlert[]): string {
       <span style="font-size:12px;color:${S.text};">${a.morningAction} ${a.morningConfidence}%</span>
       <span style="color:${S.muted};font-size:12px;"> → </span>
       <span style="font-size:13px;font-weight:bold;color:#fff;">${a.currentAction} ${a.currentConfidence}%</span>
-      <span style="color:${a.confidenceDelta >= 0 ? S.green : S.red};font-size:12px;"> (${a.confidenceDelta >= 0 ? "+" : ""}${a.confidenceDelta})</span>
+      ${
+        // Only show the numeric delta when the action stayed the same — comparing
+        // confidence across action tiers (STRONG BUY 82% → BUY 67%) is misleading
+        // because the calibration scales aren't directly comparable; the action
+        // change itself IS the signal, the number adds noise.
+        a.morningAction === a.currentAction
+          ? `<span style="color:${a.confidenceDelta >= 0 ? S.green : S.red};font-size:12px;"> (${a.confidenceDelta >= 0 ? "+" : ""}${a.confidenceDelta})</span>`
+          : ""
+      }
     </div>
     ${priceDeltaHtml(a.priceDelta) ? `<div style="margin-bottom:6px;">${priceDeltaHtml(a.priceDelta)}</div>` : ""}
     <div style="font-size:12px;color:${S.text};margin-bottom:4px;">${a.reason}</div>

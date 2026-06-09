@@ -334,8 +334,15 @@ function buildIntradayMessage(alerts: IntradayAlert[]): string {
     lines.push(
       `${actionEmoji(alert.currentAction)} <b>${alert.currentAction} ${alert.ticker}</b> (${triggerLabel})`,
     );
+    // Only show the numeric confidence delta when the action stayed the same.
+    // STRONG BUY 82% → BUY 67% (-15) is misleading: the two scales aren't
+    // directly comparable across action tiers — the action change IS the signal.
+    const sameAction = alert.morningAction === alert.currentAction;
+    const deltaSuffix = sameAction
+      ? ` (${alert.confidenceDelta >= 0 ? "+" : ""}${alert.confidenceDelta})`
+      : "";
     lines.push(
-      `   ${alert.morningAction} ${alert.morningConfidence}% → ${alert.currentAction} ${alert.currentConfidence}% (${alert.confidenceDelta >= 0 ? "+" : ""}${alert.confidenceDelta})`,
+      `   ${alert.morningAction} ${alert.morningConfidence}% → ${alert.currentAction} ${alert.currentConfidence}%${deltaSuffix}`,
     );
     if (Math.abs(alert.priceDelta) >= 0.01) {
       const dir = alert.priceDelta < 0 ? "down" : "up";
