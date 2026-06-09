@@ -1,5 +1,10 @@
 import { allUniqueTickers, intradayConfig, defaultCurrency } from "./config.js";
 import { fetchPrices, fetchMacroIndicators, formatMacroContext } from "./fetchPrices.js";
+import {
+  loadMacroCalendar,
+  formatMacroEventsForPrompt,
+  type MacroEvent,
+} from "./fetchMacroCalendar.js";
 import { fetchTechnicals } from "./fetchTechnicals.js";
 import { fetchNews } from "./fetchNews.js";
 import type { NewsItem } from "./fetchNews.js";
@@ -121,7 +126,9 @@ try {
     );
   }
   // fxSkipped is also passed to email/Telegram footers in later tasks
-  const macroContext = formatMacroContext(macroIndicators);
+  const macroEvents = loadMacroCalendar();
+  const macroContext =
+    formatMacroContext(macroIndicators) + formatMacroEventsForPrompt(macroEvents);
   const report = runAnalysis(prices);
 
   // Console summary
@@ -310,9 +317,9 @@ try {
       });
     }
 
-    await sendBrief(report, news, aiRecs, technicals, prices, fxSkipped);
+    await sendBrief(report, news, aiRecs, technicals, prices, fxSkipped, macroEvents);
     try {
-      await sendTelegramBrief(report, news, aiRecs, technicals, prices);
+      await sendTelegramBrief(report, news, aiRecs, technicals, prices, macroEvents);
     } catch (err) {
       console.error("Telegram send failed:", (err as Error).message);
     }

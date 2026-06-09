@@ -7,6 +7,7 @@ import type { TechnicalData } from "./fetchTechnicals.js";
 import type { QuoteData } from "./fetchPrices.js";
 import { escapeHtmlAttr, formatMoney } from "./util.js";
 import { hasStrongBuyVote } from "./aiAggregation.js";
+import { formatMacroEventsBannerHtml, type MacroEvent } from "./fetchMacroCalendar.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -319,6 +320,7 @@ export function buildEmailHtml(
   technicals: Record<string, TechnicalData> = {},
   priceData: Record<string, QuoteData> = {},
   fxSkipped: Array<{ ticker: string; reason: string }> = [],
+  macroEvents: MacroEvent[] = [],
 ): string {
   const date = new Date().toLocaleDateString("en-AU", {
     weekday: "long",
@@ -350,6 +352,9 @@ export function buildEmailHtml(
   <h1 style="margin:0;font-size:22px;color:#fff;">Richfolio Daily Brief</h1>
   <p style="margin:6px 0 0;color:${S.muted};font-size:13px;">${date}</p>
 </td></tr>
+
+<!-- Macro Event Banner (only renders when events upcoming within 14d) -->
+${formatMacroEventsBannerHtml(macroEvents, { bg: S.cardBg, border: S.border, yellow: S.yellow, muted: S.muted, text: S.text })}
 
 <!-- Portfolio Stats -->
 <tr><td style="padding:16px 24px;background:${S.cardBg};border-bottom:1px solid ${S.border};">
@@ -477,8 +482,9 @@ export async function sendBrief(
   technicals: Record<string, TechnicalData> = {},
   priceData: Record<string, QuoteData> = {},
   fxSkipped: Array<{ ticker: string; reason: string }> = [],
+  macroEvents: MacroEvent[] = [],
 ): Promise<void> {
-  const html = buildEmailHtml(report, news, aiRecs, technicals, priceData, fxSkipped);
+  const html = buildEmailHtml(report, news, aiRecs, technicals, priceData, fxSkipped, macroEvents);
 
   const { error } = await resend.emails.send({
     from: "Richfolio <onboarding@resend.dev>",
