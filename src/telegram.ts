@@ -6,7 +6,6 @@ import type { IntradayAlert } from "./intradayCompare.js";
 import type { QuoteData } from "./fetchPrices.js";
 import { escapeHtmlText, formatMoney } from "./util.js";
 import { defaultCurrency } from "./config.js";
-import { formatMacroEventsBanner, type MacroEvent } from "./fetchMacroCalendar.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -38,7 +37,6 @@ function buildMessage(
   aiRecs: AIBuyRecommendation[],
   technicals: Record<string, TechnicalData> = {},
   priceData: Record<string, QuoteData> = {},
-  macroEvents: MacroEvent[] = [],
 ): string {
   const date = new Date().toLocaleDateString("en-AU", {
     weekday: "long",
@@ -52,14 +50,6 @@ function buildMessage(
   // Header
   lines.push(`📊 <b>Richfolio Brief</b> — ${date}`);
   lines.push("");
-
-  // Macro event banner (plain text — no HTML; escapeHtmlText applied to be safe)
-  const banner = formatMacroEventsBanner(macroEvents);
-  if (banner) {
-    lines.push(escapeHtmlText(banner));
-    lines.push("");
-  }
-
   lines.push(
     `💰 <b>${fmt$(report.totalCurrentValue)}</b> ${defaultCurrency}` +
       (report.portfolioBeta != null ? `  |  β ${report.portfolioBeta.toFixed(2)}` : "") +
@@ -204,14 +194,13 @@ export async function sendTelegramBrief(
   aiRecs: AIBuyRecommendation[] = [],
   technicals: Record<string, TechnicalData> = {},
   priceData: Record<string, QuoteData> = {},
-  macroEvents: MacroEvent[] = [],
 ): Promise<void> {
   if (!BOT_TOKEN || !CHAT_ID) {
     console.log("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set — skipping Telegram\n");
     return;
   }
 
-  const message = buildMessage(report, news, aiRecs, technicals, priceData, macroEvents);
+  const message = buildMessage(report, news, aiRecs, technicals, priceData);
 
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
   const response = await fetch(url, {
