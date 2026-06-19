@@ -138,7 +138,8 @@ AI 提示詞中包含明確的**衝突解決規則**:當 MACD 與布林通道衝
 
 ---
 
-## Watch List(研究標的)
+## 觀察清單 (研究標的)
+{: #watch-list }
 
 `config.json` 中可選的 `watching` 陣列用於追蹤你想**被評分並以訊號形式呈現**、但不想納入目標配置的標的。Watch 標的會跟組合標的走相同的抓取 + AI 管線,但繞過基於配置的規則:
 
@@ -150,7 +151,7 @@ AI 提示詞中包含明確的**衝突解決規則**:當 MACD 與布林通道衝
 
 由於沒有配置缺口可作為錨點,watch 標的的 STRONG BUY 需要更強的訊號匯流:≥1 個價位訊號 + ≥2 個動能訊號 + 無重大紅旗 + 價值評級 A/B(僅針對股票)。把 watch list 用在你之後可能加進目標投資組合的研究候選名單 — 例如 *「現在是不是建立 NVDA 部位的好時機?」* — 而不會干擾配置計算。
 
-Schema 詳見[設定說明 → Watch List](configuration#watch-list)。
+Schema 詳見[設定說明 → 觀察清單](configuration#watch-list)。
 
 ---
 
