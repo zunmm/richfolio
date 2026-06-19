@@ -30,6 +30,13 @@ export interface PortfolioConfig {
   totalPortfolioValue: number;
   defaultCurrency?: string;
   intradayAlerts?: Partial<IntradayAlertConfig>;
+  /**
+   * Tickers tracked but NOT in your target portfolio. They get fetched, scored,
+   * and surfaced in a "Watch List" section, but are excluded from allocation
+   * math, gap-based STRONG BUY criteria, and the max-2 STRONG BUY cap. Use this
+   * for tickers you're researching without committing to a target weight.
+   */
+  watching?: string[];
 }
 
 // ── Load config.json ────────────────────────────────────────────────
@@ -47,6 +54,15 @@ const json = JSON.parse(raw) as PortfolioConfig;
 
 export const targetPortfolio = json.targetPortfolio;
 export const currentHoldings = json.currentHoldings;
+// Validate `watching` is an array of strings if present. Empty/missing is fine.
+const rawWatching = (json as unknown as Record<string, unknown>).watching;
+if (rawWatching !== undefined && !Array.isArray(rawWatching)) {
+  throw new Error('config.json: "watching" must be an array of ticker symbols.');
+}
+export const watchingTickers: string[] = Array.isArray(rawWatching)
+  ? rawWatching.filter((t): t is string => typeof t === "string" && t.length > 0)
+  : [];
+export const watchingSet = new Set<string>(watchingTickers);
 // Migration guard — old field name is no longer accepted
 if ((json as unknown as Record<string, unknown>).totalPortfolioValueUSD !== undefined) {
   throw new Error(
@@ -114,7 +130,13 @@ export function fromYahooTicker(yahooTicker: string): string {
   return yahooTicker;
 }
 
-/** Get all unique tickers from both target and current holdings */
+/** Get all unique tickers from target, current holdings, AND watching list. */
 export function allUniqueTickers(): string[] {
-  return [...new Set([...Object.keys(targetPortfolio), ...Object.keys(currentHoldings)])];
+  return [
+    ...new Set([
+      ...Object.keys(targetPortfolio),
+      ...Object.keys(currentHoldings),
+      ...watchingTickers,
+    ]),
+  ];
 }

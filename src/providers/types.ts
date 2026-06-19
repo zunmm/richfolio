@@ -54,6 +54,13 @@ export interface AIBuyRecommendation {
   providers?: ProviderScore[];
   /** Set only when providers is set. */
   agreement?: "unanimous" | "majority" | "split";
+  /**
+   * True when the ticker is from the user's `watching` list rather than the
+   * target portfolio. Allocation-based guards (overweight, gap < 2% STRONG BUY
+   * threshold, max-2 STRONG BUY cap) are skipped for these. Renderers separate
+   * them into a "Watch List" section instead of mixing with portfolio recs.
+   */
+  isWatching?: boolean;
 }
 
 // ── Provider input bundle ──────────────────────────────────────────

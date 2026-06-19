@@ -186,6 +186,10 @@ export function aggregateMultiAI(runs: ProviderRun[]): AIBuyRecommendation[] {
       bottomSignal: lead.bottomSignal,
       providers: scores,
       agreement,
+      // Preserve watch-list tag from the per-provider rec (set by the
+      // orchestrator before guards). If any provider's rec was tagged, the
+      // aggregated rec is too — the flag tracks the ticker, not the verdict.
+      isWatching: sampleRec.isWatching,
     });
   }
 

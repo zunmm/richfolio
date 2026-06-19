@@ -80,6 +80,8 @@ function guardOverweightHold(recs: AIBuyRecommendation[], report: AllocationRepo
   }
 
   for (const rec of recs) {
+    // Watch tickers have no allocation target — skip the overweight check.
+    if (rec.isWatching) continue;
     if (rec.action !== "BUY" && rec.action !== "STRONG BUY") continue;
     const gap = gapMap[rec.ticker];
     if (gap == null) continue;
@@ -185,6 +187,24 @@ function guardStrongBuyCriteria(
 
   for (const rec of recs) {
     if (rec.action !== "STRONG BUY") continue;
+    // Watch tickers use the WATCH LIST CRITERIA in the prompt — they don't have
+    // an allocation gap, so the gap ≥ 2% threshold doesn't apply. Confidence
+    // and signal-presence checks below still bind, so watch STRONG BUYs are
+    // still vetted (just not on allocation grounds).
+    if (rec.isWatching) {
+      // Still enforce confidence ≥ 80% and signal presence; just skip gap.
+      if (rec.confidence < 80) {
+        console.log(
+          `  [guard:criteria] ${rec.ticker} (watch): confidence ${rec.confidence}% < 80% → BUY`,
+        );
+        applyDowngrade(
+          rec,
+          "BUY",
+          `watch list: confidence ${rec.confidence}% < 80% STRONG BUY threshold`,
+        );
+      }
+      continue;
+    }
 
     const gap = gapMap[rec.ticker] ?? 0;
     const tech = technicals[rec.ticker];
@@ -224,9 +244,12 @@ function guardStrongBuyCriteria(
 }
 
 // ── Guard 4: Max 2 STRONG BUY ──────────────────────────────────────
+// Cap applies only to PORTFOLIO STRONG BUYs — watch-list STRONG BUYs are
+// research signals, not capital-deployment decisions, so they don't compete
+// for the same quota. Surface every qualifying watch STRONG BUY.
 function guardMaxStrongBuy(recs: AIBuyRecommendation[]): void {
   const strongBuys = recs
-    .filter((r) => r.action === "STRONG BUY")
+    .filter((r) => r.action === "STRONG BUY" && !r.isWatching)
     .sort((a, b) => b.confidence - a.confidence);
 
   if (strongBuys.length > 2) {
@@ -267,6 +290,15 @@ function guardBuyValueSanity(recs: AIBuyRecommendation[], report: AllocationRepo
       if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
         rec.suggestedLimitPrice = 0;
         rec.limitPriceReason = "";
+      }
+      continue;
+    }
+
+    // Watch tickers have no allocation gap to anchor a buy size — user sizes
+    // manually. Force suggestedBuyValue to 0 regardless of what the AI returned.
+    if (rec.isWatching) {
+      if (rec.suggestedBuyValue > 0) {
+        rec.suggestedBuyValue = 0;
       }
       continue;
     }

@@ -1,4 +1,4 @@
-import { targetPortfolio, currentHoldings, totalPortfolioValue } from "./config.js";
+import { targetPortfolio, currentHoldings, totalPortfolioValue, watchingSet } from "./config.js";
 import type { QuoteData } from "./fetchPrices.js";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -24,8 +24,28 @@ export interface AllocationItem {
   beta: number | null;
 }
 
+/**
+ * Lightweight item for a watch-list ticker. No allocation context — pure
+ * price/value snapshot to hand to the AI prompt. The AI evaluates these on
+ * signal merit; allocation-based guard logic skips them.
+ */
+export interface WatchingItem {
+  ticker: string;
+  tickerFullName: string | null;
+  originalCurrency: string;
+  price: number;
+  trailingPE: number | null;
+  peSignal: "✅ below avg" | "⚠️ above avg" | null;
+  weekSignal: "🟢 near low" | "🟡 near high" | "—" | null;
+  fiftyTwoWeekPercent: number | null;
+  dividendYield: number | null;
+  beta: number | null;
+}
+
 export interface AllocationReport {
   items: AllocationItem[];
+  /** Tickers tracked but not in the target portfolio (config.watching). */
+  watchingItems: WatchingItem[];
   portfolioBeta: number | null;
   estimatedAnnualDividend: number;
   totalCurrentValue: number;
@@ -48,12 +68,16 @@ export function runAnalysis(priceData: Record<string, QuoteData>): AllocationRep
   // Use the higher of actual value or configured estimate for allocation math
   const portfolioValue = Math.max(totalCurrentValue, totalPortfolioValue);
 
-  // 2. Build allocation items for ALL tickers (target + held)
+  // 2. Build allocation items for ALL tickers (target + held).
+  //    Watch-list tickers are excluded here — they go in a separate watchingItems
+  //    array so they don't pollute allocation maths or compete with portfolio
+  //    recommendations for the max-2 STRONG BUY cap.
   const allTickers = new Set([...Object.keys(targetPortfolio), ...Object.keys(currentHoldings)]);
 
   const items: AllocationItem[] = [];
 
   for (const ticker of allTickers) {
+    if (watchingSet.has(ticker)) continue;
     const quote = priceData[ticker];
     if (!quote) continue;
 
@@ -154,8 +178,41 @@ export function runAnalysis(priceData: Record<string, QuoteData>): AllocationRep
   }
   estimatedAnnualDividend = Math.round(estimatedAnnualDividend * 100) / 100;
 
+  // 5. Build the watch-list items (no allocation context — pure snapshots).
+  const watchingItems: WatchingItem[] = [];
+  for (const ticker of watchingSet) {
+    const quote = priceData[ticker];
+    if (!quote) continue;
+
+    let peSignal: WatchingItem["peSignal"] = null;
+    if (quote.trailingPE != null && quote.avgPE != null) {
+      peSignal = quote.trailingPE < quote.avgPE ? "✅ below avg" : "⚠️ above avg";
+    }
+
+    let weekSignal: WatchingItem["weekSignal"] = null;
+    if (quote.fiftyTwoWeekPercent != null) {
+      if (quote.fiftyTwoWeekPercent < 0.2) weekSignal = "🟢 near low";
+      else if (quote.fiftyTwoWeekPercent > 0.8) weekSignal = "🟡 near high";
+      else weekSignal = "—";
+    }
+
+    watchingItems.push({
+      ticker,
+      tickerFullName: quote.longName ?? null,
+      originalCurrency: quote.originalCurrency,
+      price: quote.price,
+      trailingPE: quote.trailingPE,
+      peSignal,
+      weekSignal,
+      fiftyTwoWeekPercent: quote.fiftyTwoWeekPercent,
+      dividendYield: quote.dividendYield,
+      beta: quote.beta,
+    });
+  }
+
   return {
     items,
+    watchingItems,
     portfolioBeta,
     estimatedAnnualDividend,
     totalCurrentValue: Math.round(totalCurrentValue * 100) / 100,

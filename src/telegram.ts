@@ -59,8 +59,9 @@ function buildMessage(
 
   // AI Recommendations or fallback
   if (aiRecs.length > 0) {
+    // Portfolio actionable recs (excludes watch list)
     const actionable = aiRecs
-      .filter((r) => r.action === "STRONG BUY" || r.action === "BUY")
+      .filter((r) => !r.isWatching && (r.action === "STRONG BUY" || r.action === "BUY"))
       .slice(0, 5);
     if (actionable.length > 0) {
       // Mode detection — multi-AI if any rec has ≥2 providers attached
@@ -131,7 +132,9 @@ function buildMessage(
         }
       }
 
-      const holds = aiRecs.filter((r) => r.action === "HOLD" || r.action === "WAIT");
+      const holds = aiRecs.filter(
+        (r) => !r.isWatching && (r.action === "HOLD" || r.action === "WAIT"),
+      );
       if (holds.length > 0) {
         lines.push("");
         lines.push(
@@ -140,6 +143,54 @@ function buildMessage(
       }
     } else {
       lines.push("🤖 No strong buy opportunities identified today.");
+    }
+
+    // Watch List section (separate from portfolio — no buy size, signal only)
+    const watching = aiRecs.filter((r) => r.isWatching);
+    if (watching.length > 0) {
+      const watchActionable = watching.filter(
+        (r) => r.action === "STRONG BUY" || r.action === "BUY",
+      );
+      const watchHolds = watching.filter((r) => r.action === "HOLD" || r.action === "WAIT");
+      lines.push("");
+      lines.push("👁 <b>Watch List:</b>");
+      for (const rec of watchActionable.slice(0, 5)) {
+        const earningsDays = priceData[rec.ticker]?.daysToEarnings;
+        const earningsTag =
+          earningsDays != null && earningsDays <= 14 ? ` [earnings ${earningsDays}d]` : "";
+        const isMulti = !!rec.providers && rec.providers.length >= 2;
+        const confLabel = isMulti ? `avg ${rec.confidence}%` : `${rec.confidence}%`;
+        const agreementTag = isMulti && rec.agreement ? ` ${rec.agreement}` : "";
+        lines.push(
+          `${actionEmoji(rec.action)} <b>${rec.action} ${rec.ticker}</b> (${confLabel})${agreementTag}` +
+            (rec.valueRating ? ` [${rec.valueRating}]` : "") +
+            earningsTag,
+        );
+        if (isMulti) {
+          const perAI = rec
+            .providers!.map(
+              (p) =>
+                `${escapeHtmlText(p.providerShortLabel)} ${actionEmoji(p.action)}${p.confidence}`,
+            )
+            .join(" · ");
+          lines.push(`   ${perAI}`);
+        }
+        lines.push(`   <i>${escapeHtmlText(rec.reason)}</i>`);
+        if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
+          lines.push(
+            `   💡 Limit: ${fmt$(rec.suggestedLimitPrice)}` +
+              (rec.limitPriceReason ? ` — ${escapeHtmlText(rec.limitPriceReason)}` : ""),
+          );
+        }
+        if (rec.analysisUrl) {
+          lines.push(`   📋 <a href="${rec.analysisUrl}">More Details</a>`);
+        }
+      }
+      if (watchHolds.length > 0) {
+        lines.push(
+          `⏸ ${watchHolds.map((r) => r.ticker + (r.valueRating ? `[${r.valueRating}]` : "")).join(", ")}`,
+        );
+      }
     }
   } else {
     // Fallback: gap-based top buys

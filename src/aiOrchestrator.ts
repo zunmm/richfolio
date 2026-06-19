@@ -1,5 +1,5 @@
 import { validateRecommendations } from "./guards.js";
-import { defaultCurrency } from "./config.js";
+import { defaultCurrency, watchingSet } from "./config.js";
 import { buildActiveProviders } from "./providers/index.js";
 import { aggregateMultiAI, type ProviderRun } from "./aiAggregation.js";
 import type { AIBuyRecommendation, AIProvider, AIProviderInput } from "./providers/types.js";
@@ -43,6 +43,11 @@ async function runProvider(
   for (const rec of recommendations) {
     rec.tickerFullName = longNameMap.get(rec.ticker) ?? null;
     rec.originalCurrency = currencyMap.get(rec.ticker) ?? defaultCurrency;
+    // Tag watch-list recommendations so guards / renderers can route them to
+    // the WATCH LIST CRITERIA path instead of the portfolio path.
+    if (watchingSet.has(rec.ticker)) {
+      rec.isWatching = true;
+    }
   }
 
   // Guard pipeline (bond ETF caps, earnings proximity, STRONG BUY criteria, etc.).

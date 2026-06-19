@@ -24,6 +24,7 @@
   },
   "totalPortfolioValue": 50000,
   "defaultCurrency": "USD",
+  "watching": ["MSFT", "NVDA", "AMD"],
   "intradayAlerts": {
     "enabled": true,
     "confidenceIncreaseThreshold": 10,

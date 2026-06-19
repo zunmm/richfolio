@@ -2,7 +2,7 @@ import type { AllocationReport } from "../analyze.js";
 import type { QuoteData } from "../fetchPrices.js";
 import type { NewsItem } from "../fetchNews.js";
 import type { TechnicalData } from "../fetchTechnicals.js";
-import { defaultCurrency } from "../config.js";
+import { defaultCurrency, watchingSet } from "../config.js";
 import { formatMoney } from "../util.js";
 
 // ── Bond ETF asset class lists ─────────────────────────────────────
@@ -303,6 +303,133 @@ function buildPrompt(
     return lines.filter(Boolean).join("\n");
   });
 
+  // ── Watch list summaries (no allocation context — pure signal merit) ──
+  // Watch tickers go through the same fetch pipeline but bypass the allocation
+  // math. The block tag `[WATCH LIST]` cues the model into the WATCH LIST
+  // CRITERIA section of the INSTRUCTIONS below.
+  const watchSummaries = report.watchingItems.map((item) => {
+    const quote = priceData[item.ticker];
+    const tech = technicals[item.ticker];
+    const newsItems = news[item.ticker] || [];
+    const headlines = newsItems
+      .map((n) => {
+        const tags = n.sentiment && n.impact ? ` [${n.sentiment}, ${n.impact} impact]` : "";
+        return `"${n.title}" (${n.source})${tags}`;
+      })
+      .join("; ");
+
+    const fullName = item.tickerFullName || item.ticker;
+    const priceLine =
+      item.originalCurrency !== defaultCurrency
+        ? `  Price: ${formatMoney(item.price, defaultCurrency)} (originally ${item.originalCurrency})`
+        : `  Price: ${formatMoney(item.price, defaultCurrency)}`;
+
+    const lines: (string | null)[] = [
+      `${item.ticker} (${fullName}) [WATCH LIST]:`,
+      `  Asset type: WATCH LIST (no allocation target — apply WATCH LIST CRITERIA, not portfolio gap rules)`,
+      priceLine,
+      `  Trailing P/E: ${quote?.trailingPE?.toFixed(1) ?? "N/A"}`,
+      `  Forward P/E: ${quote?.forwardPE?.toFixed(1) ?? "N/A"}`,
+      `  Avg P/E (historical): ${quote?.avgPE?.toFixed(1) ?? "N/A"}`,
+      (() => {
+        const wpPct =
+          item.fiftyTwoWeekPercent != null ? Math.round(item.fiftyTwoWeekPercent * 100) : null;
+        const belowHigh =
+          quote?.fiftyTwoWeekHigh != null
+            ? (((quote.fiftyTwoWeekHigh - item.price) / quote.fiftyTwoWeekHigh) * 100).toFixed(1)
+            : null;
+        const aboveLow =
+          quote?.fiftyTwoWeekLow != null
+            ? (((item.price - quote.fiftyTwoWeekLow) / quote.fiftyTwoWeekLow) * 100).toFixed(1)
+            : null;
+        if (wpPct == null) return `  52-week position: N/A`;
+        const qualifier =
+          wpPct < 20 ? " ← NEAR ANNUAL LOW" : wpPct > 70 ? " ← NEAR ANNUAL HIGH" : "";
+        return (
+          `  52-week position: ${wpPct}%${qualifier}` +
+          (belowHigh != null ? `; ${belowHigh}% below 52w high` : "") +
+          (aboveLow != null ? `; ${aboveLow}% above 52w low` : "")
+        );
+      })(),
+      `  Dividend yield: ${item.dividendYield != null ? (item.dividendYield * 100).toFixed(2) + "%" : "N/A"}`,
+      `  Beta: ${item.beta?.toFixed(2) ?? "N/A"}`,
+      (() => {
+        const days = quote?.daysToEarnings;
+        if (days == null) return `  Earnings: none upcoming`;
+        const dateStr = quote?.earningsDate
+          ? quote.earningsDate.toISOString().split("T")[0]
+          : "unknown";
+        const warning = days <= 3 ? " ⚠ IMMINENT" : days <= 7 ? " ⚠ SOON" : "";
+        return `  Earnings: in ${days} days (${dateStr})${warning}`;
+      })(),
+      `  P/E signal: ${item.peSignal ?? "none"}`,
+    ];
+
+    if (tech) {
+      lines.push(`  Technical indicators:`);
+      lines.push(
+        `    50-day MA: ${formatMoney(tech.sma50, defaultCurrency)} (price ${tech.priceVsSma50 > 0 ? "+" : ""}${tech.priceVsSma50}% vs MA)`,
+      );
+      if (tech.sma200 != null) {
+        lines.push(
+          `    200-day MA: ${formatMoney(tech.sma200, defaultCurrency)} (price ${tech.priceVsSma200! > 0 ? "+" : ""}${tech.priceVsSma200}% vs MA)`,
+        );
+      }
+      lines.push(`    RSI(14): ${tech.rsi14} (>70 overbought, <30 oversold)`);
+      lines.push(
+        `    Momentum: ${tech.momentumSignal}${tech.goldenCross ? " (golden cross)" : ""}${tech.deathCross ? " (death cross)" : ""}`,
+      );
+      if (tech.macd != null && tech.macdSignal != null) {
+        lines.push(
+          `    MACD: ${tech.macd} / signal: ${tech.macdSignal} / histogram: ${tech.macdHistogram}${tech.macdCrossover ? ` (${tech.macdCrossover} crossover)` : ""}`,
+        );
+      }
+      if (tech.bollMiddle != null) {
+        lines.push(
+          `    Bollinger Bands: %B=${tech.bollPercentB}${tech.bollSqueeze ? " (SQUEEZE)" : ""}`,
+        );
+      }
+      if (tech.stochK != null) {
+        const stochLevel =
+          tech.stochK < 20 ? " ← OVERSOLD" : tech.stochK > 80 ? " ← OVERBOUGHT" : "";
+        lines.push(`    Stochastic: %K=${tech.stochK}, %D=${tech.stochD}${stochLevel}`);
+      }
+      if (tech.obvTrend != null) {
+        lines.push(`    OBV trend: ${tech.obvTrend}`);
+      }
+      if (tech.pricePercentile90d != null) {
+        lines.push(`    90-day price percentile: ${tech.pricePercentile90d}%`);
+      }
+    }
+
+    if (
+      quote &&
+      (quote.returnOnEquity != null || quote.debtToEquity != null || quote.freeCashflow != null)
+    ) {
+      lines.push(`  Fundamentals:`);
+      if (quote.returnOnEquity != null)
+        lines.push(`    ROE: ${(quote.returnOnEquity * 100).toFixed(1)}%`);
+      if (quote.debtToEquity != null)
+        lines.push(`    Debt/Equity: ${quote.debtToEquity.toFixed(1)}%`);
+      if (quote.earningsGrowth != null)
+        lines.push(`    Earnings growth: ${(quote.earningsGrowth * 100).toFixed(1)}% YoY`);
+      if (quote.targetMeanPrice != null) {
+        lines.push(
+          `    Analyst target: ${formatMoney(quote.targetMeanPrice, defaultCurrency)} (${quote.recommendationKey ?? "N/A"})`,
+        );
+      }
+    }
+
+    if (headlines) lines.push(`  Recent news: ${headlines}`);
+
+    return lines.filter(Boolean).join("\n");
+  });
+
+  const watchBlock =
+    watchSummaries.length > 0
+      ? `\n\nWATCH LIST DATA (tickers tracked but NOT in target portfolio — allocation rules do NOT apply):\n${watchSummaries.join("\n\n")}`
+      : "";
+
   return `You are a portfolio analyst. Analyze these tickers and recommend which to buy.
 
 ${macroContext ? macroContext + "\n" : ""}CURRENCY: All monetary values in this prompt are denominated in ${defaultCurrency}.
@@ -313,7 +440,7 @@ PORTFOLIO CONTEXT:
 - Estimated annual dividends: ${formatMoney(report.estimatedAnnualDividend, defaultCurrency)}
 
 TICKER DATA:
-${tickerSummaries.join("\n\n")}
+${tickerSummaries.join("\n\n")}${watchBlock}
 
 INSTRUCTIONS:
 1. Only recommend tickers that are in the target portfolio (target > 0%).
@@ -449,7 +576,28 @@ INSTRUCTIONS:
 13. EARNINGS PROXIMITY GUARD:
    - If earnings are within 7 days: Cap at BUY (never STRONG BUY). Note "earnings in X days" in the reason.
    - If earnings are within 3 days: Cap at HOLD. The risk/reward of holding through earnings is too asymmetric for a buy recommendation.
-   - If no earnings date is shown, ignore this rule.`;
+   - If no earnings date is shown, ignore this rule.
+14. WATCH LIST CRITERIA (only for tickers marked [WATCH LIST]):
+   These are tracked but NOT in the user's target portfolio — allocation-gap
+   rules (rule 4a "gap ≥ 2%", rule 4 "Only recommend tickers with allocation
+   need") DO NOT apply. Evaluate purely on technical/fundamental signal merit.
+   - STRONG BUY (watch): ALL must be met
+     * ≥ 1 price-level signal (P/E below avg, 52w < 30%, or price below 200MA)
+     * ≥ 2 momentum signals confirming the price-level signal (RSI < 35, bullish
+       MACD crossover, Bollinger %B < 0.15, Stochastic %K < 20, OBV rising)
+     * No major red flags
+     * Confidence ≥ 80% based on signal confluence alone
+     * Value rating A or B (if it's a stock; ETF/crypto skip this check)
+   - BUY (watch): 2+ entry signals with at least 1 price-level
+   - HOLD/WAIT (watch): less compelling setups
+   - suggestedBuyValue MUST be 0 for watch tickers (user sizes manually).
+   - suggestedLimitPrice: still suggest one for STRONG BUY / BUY.
+   - The "MAX 2 STRONG BUY" cap (rule 4) applies ONLY to portfolio tickers;
+     watch tickers don't compete for that quota — flag every watch ticker that
+     genuinely qualifies.
+   - Framing: "MSFT (watch) shows STRONG BUY setup: oversold across RSI 22,
+     Bollinger %B 0.08, and below 200MA — value rating A. Add to portfolio
+     consideration." — note "(watch)" in the reason for clarity.`;
 }
 
 // ── Stage 1: Observation prompt (Think — parse data, no decisions) ──
@@ -529,6 +677,16 @@ export function buildDecisionPrompt(
     }
     metricsMap[item.ticker] = lines;
   }
+  // Watch list tickers — flagged so Stage 2 applies WATCH LIST CRITERIA.
+  for (const item of report.watchingItems) {
+    const lines: string[] = [];
+    lines.push(`  Price: ${formatMoney(item.price, defaultCurrency)}`);
+    if (item.fiftyTwoWeekPercent != null)
+      lines.push(`  52w position: ${Math.round(item.fiftyTwoWeekPercent * 100)}%`);
+    if (item.trailingPE != null) lines.push(`  P/E: ${item.trailingPE.toFixed(1)}`);
+    lines.push(`  Asset type: WATCH LIST (no allocation target — apply WATCH LIST CRITERIA)`);
+    metricsMap[item.ticker] = lines;
+  }
 
   const obsText = observations
     .map((obs) => {
@@ -599,5 +757,14 @@ WAIT: Overvalued, risky, or no allocation need.
                   distribution yield (>4.5% → +3, <3% → -2).
      Frame the reason around percentile + rate direction, NOT momentum indicators.
    Long/intermediate: STRONG BUY valid when gap≥2% + near 52w low + rate environment suggests peak.
-9. Sort by confidence descending.`;
+9. WATCH LIST tickers (marked "Asset type: WATCH LIST"):
+   Allocation-gap rules above (1, 4a, 4 max-2 cap) do NOT apply. Evaluate purely on signal merit:
+   - STRONG BUY: ≥1 price-level signal + ≥2 momentum signals confirming + no major red flags + confidence ≥ 80 + value rating A/B (stocks only).
+   - BUY: 2+ entry signals with at least 1 price-level.
+   - HOLD/WAIT: less compelling setups.
+   - suggestedBuyValue MUST be 0 (user sizes manually).
+   - suggestedLimitPrice: still suggest one for STRONG BUY / BUY.
+   - max-2 STRONG BUY cap does NOT apply — flag every qualifying watch ticker.
+   - Note "(watch)" in the reason for clarity.
+10. Sort by confidence descending.`;
 }

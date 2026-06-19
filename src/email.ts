@@ -207,8 +207,15 @@ function buildAISection(
   technicals: Record<string, TechnicalData> = {},
   priceData: Record<string, QuoteData> = {},
 ): string {
-  const actionable = aiRecs.filter((r) => r.action === "STRONG BUY" || r.action === "BUY");
-  const others = aiRecs.filter((r) => r.action !== "STRONG BUY" && r.action !== "BUY");
+  // Portfolio tickers (excludes watch list)
+  const portfolioRecs = aiRecs.filter((r) => !r.isWatching);
+  const actionable = portfolioRecs.filter((r) => r.action === "STRONG BUY" || r.action === "BUY");
+  const others = portfolioRecs.filter((r) => r.action !== "STRONG BUY" && r.action !== "BUY");
+  // Watch list tickers — rendered as a separate sub-section below the portfolio
+  // recommendations. Allocation rules don't apply; suggestedBuyValue is always 0.
+  const watching = aiRecs.filter((r) => r.isWatching);
+  const watchActionable = watching.filter((r) => r.action === "STRONG BUY" || r.action === "BUY");
+  const watchOthers = watching.filter((r) => r.action !== "STRONG BUY" && r.action !== "BUY");
 
   // Detect provider mode from the first rec's providers[] (uniformly populated
   // by the orchestrator). When ≥2 active, surface that in the subtitle.
@@ -268,6 +275,55 @@ function buildAISection(
     </div>`,
       )
       .join("")}
+  </div>`
+      : ""
+  }
+  ${
+    watching.length > 0
+      ? `
+  <div style="margin-top:18px;padding-top:14px;border-top:2px dashed ${S.border};">
+    <div style="font-size:13px;color:${S.yellow};font-weight:bold;margin-bottom:2px;">Watch List</div>
+    <div style="font-size:11px;color:${S.muted};margin-bottom:10px;">Tickers tracked but not in your target portfolio — signals only, no buy size suggested.</div>
+    ${watchActionable
+      .map(
+        (rec) => `
+    <div style="padding:10px 0;border-bottom:1px solid ${S.border};">
+      <div style="margin-bottom:4px;">
+        <span style="font-weight:bold;font-size:14px;color:#fff;" title="${escapeHtmlAttr(rec.tickerFullName ?? rec.ticker)}">${rec.ticker}</span>
+        &nbsp;${actionBadge(rec.action)}${valueRatingBadge(rec.valueRating)}${earningsBadge(priceData[rec.ticker]?.daysToEarnings ?? null)}${isMultiAI(rec) ? agreementBadge(rec.agreement) : ""}
+        &nbsp;${confidenceBar(rec.confidence)}${isMultiAI(rec) ? `<span style="font-size:10px;color:${S.muted};margin-left:6px;">avg</span>` : ""}
+      </div>
+      <div style="font-size:12px;color:${S.text};margin-top:4px;">${rec.reason}</div>
+      ${buildProvidersBreakdown(rec)}
+      ${buildTechnicalInsight(rec, technicals[rec.ticker])}
+      ${
+        hasStrongBuyVote(rec) && rec.analysisUrl
+          ? `
+      <div style="margin-top:8px;">
+        <a href="${rec.analysisUrl}" style="display:inline-block;background:${S.blue}22;color:${S.blue};padding:4px 12px;border-radius:4px;font-size:11px;font-weight:bold;text-decoration:none;border:1px solid ${S.blue}44;">More Details &rarr;</a>
+      </div>`
+          : ""
+      }
+    </div>`,
+      )
+      .join("")}
+    ${
+      watchOthers.length > 0
+        ? `
+    <div style="margin-top:8px;">
+      ${watchOthers
+        .map(
+          (rec) => `
+      <div style="padding:4px 0;font-size:12px;">
+        <span style="font-weight:bold;" title="${escapeHtmlAttr(rec.tickerFullName ?? rec.ticker)}">${rec.ticker}</span>
+        &nbsp;${actionBadge(rec.action)}${valueRatingBadge(rec.valueRating)}
+        <span style="color:${S.muted};margin-left:8px;">${rec.reason}</span>
+      </div>`,
+        )
+        .join("")}
+    </div>`
+        : ""
+    }
   </div>`
       : ""
   }
