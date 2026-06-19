@@ -33,7 +33,9 @@ Fork한 저장소의 Settings → Secrets and variables → Actions → **Variab
     "VOO": 1,
     "BTC": 0.0002
   },
-  "totalPortfolioValueUSD": 50000,
+  "watching": ["MSFT", "NVDA", "AMD"],
+  "totalPortfolioValue": 50000,
+  "defaultCurrency": "USD",
   "intradayAlerts": {
     "enabled": true,
     "confidenceIncreaseThreshold": 10
@@ -49,7 +51,9 @@ Fork한 저장소의 Settings → Secrets and variables → Actions → **Variab
 |------|------|------|
 | `targetPortfolio` | 예 | 목표 배분 비율(%). 키는 티커 심볼이고, 값은 합계가 약 100%가 되어야 하는 비율입니다. |
 | `currentHoldings` | 예 | 현재 보유한 주식 수. 목표 포트폴리오에 없는 종목도 포함할 수 있습니다 (예: ETF 중첩 감지를 위한 AAPL). |
-| `totalPortfolioValueUSD` | 예 | USD로 표시한 추정 포트폴리오 총 가치. 실제 보유 자산이 목표보다 작을 때 배분 계산에 사용됩니다. |
+| `watching` | 아니오 | 목표 포트폴리오에는 **포함하지 않지만** 추적하고 싶은 티커 배열입니다. 데이터를 가져와 AI 점수를 매기고, 배분 계산에 영향을 주지 않으면서 별도의 "Watch List" 섹션에 노출됩니다. 아래 [Watch List](#watch-list)를 참고하세요. |
+| `totalPortfolioValue` | 예 | 추정 포트폴리오 총 가치(`defaultCurrency` 단위). 실제 보유 자산이 목표보다 작을 때 배분 계산에 사용됩니다. |
+| `defaultCurrency` | 아니오 | ISO 4217 통화 코드 (예: `"USD"`, `"GBP"`, `"AUD"`). 기본값: `"USD"`. 이메일/Telegram의 모든 금액이 이 통화로 표시되며, 일치하지 않는 티커는 Yahoo Finance의 실시간 환율로 FX 변환됩니다. |
 | `intradayAlerts` | 아니오 | 장중 알림 설정 (아래 참고). 생략 시 기본값이 적용됩니다. |
 
 ---
@@ -77,6 +81,54 @@ Fork한 저장소의 Settings → Secrets and variables → Actions → **Variab
 Actions → Portfolio Monitor → **Run workflow** → mode: `refresh`, ticker: `SMH`.
 
 가능한 경우 Yahoo Finance의 `postMarketPrice`와 `preMarketPrice`가 사용됩니다. 시간 외 데이터가 없으면 정규장 가격으로 폴백합니다.
+
+---
+
+## Watch List
+
+선택 사항인 `watching` 배열은 **점수를 매기고 신호로 노출하고 싶지만** 목표 포트폴리오에는 포함하고 싶지 않은 티커를 추적합니다. 포트폴리오 티커와 함께 데이터가 수집·프롬프트되고 점수가 매겨지지만, 배분 기반 규칙은 모두 우회합니다.
+
+**사용하면 좋은 경우:**
+
+- 목표 비중을 정하기 전에 종목을 리서치하는 단계일 때
+- 현재 보유하지 않은 종목에 대한 추천이 필요할 때 (예: *"지금이 NVDA에 신규 진입하기 좋은 타이밍인가?"*)
+- 포트폴리오 합계를 100% 이상으로 부풀리지 않고 티커 신호만 받고 싶을 때
+
+### 워치 티커와 포트폴리오 티커의 차이
+
+| 동작 | 포트폴리오 티커 | 워치 티커 |
+|---|---|---|
+| 배분 % 합산에 포함 | 예 | **아니오** |
+| 배분 격차 계산 | 예 | **아니오** |
+| STRONG BUY에 `gap ≥ 2%` 필요 | 예 | **아니오** — 대신 신호 합치(confluence)가 필요 |
+| 비중 과다 포지션 가드 적용 | 예 | **아니오** |
+| 최대 2개 STRONG BUY 상한에 포함 | 예 | **아니오** — 조건을 만족하는 워치 STRONG BUY는 모두 노출 |
+| `suggestedBuyValue` 채워짐 | 예 (격차 기반) | **항상 0** — 직접 사이징 |
+| 메인 "AI Buy Recommendations" 섹션에 렌더링 | 예 | 아니오 — 별도 "Watch List" 섹션 |
+| 지정가 추천 | 예 | 예 (동일 로직) |
+| STRONG BUY 상세 분석 페이지 | 예 | 예 |
+
+### 워치 STRONG BUY 기준
+
+배분 격차에 기댈 수 없기 때문에 워치 티커는 STRONG BUY를 받으려면 더 강한 신호 합치가 필요합니다:
+
+- 가격대 신호 ≥ 1개 (과거 평균 대비 P/E 하회, 52주 위치 < 30%, 또는 200일선 이하)
+- 가격대 신호를 확인해 주는 모멘텀 신호 ≥ 2개 (RSI < 35, 강세 MACD 크로스, 볼린저 %B < 0.15, 스토캐스틱 %K < 20, OBV 상승)
+- 주요 리스크 플래그 없음
+- 신호 합치만으로 신뢰도 ≥ 80%
+- 밸류 등급 A 또는 B (주식에만 해당; ETF와 암호화폐는 건너뜀)
+
+### 예시
+
+```json
+{
+  "targetPortfolio": { "VOO": 20, "GLD": 10, ... },
+  "currentHoldings": { "VOO": 5, "AAPL": 30 },
+  "watching": ["MSFT", "NVDA", "AMD", "AVGO"]
+}
+```
+
+이 포트폴리오는 AAPL + VOO를 보유하고, MSFT/NVDA/AMD/AVGO는 순수 리서치 신호로만 추적합니다. 워치 티커는 이메일/Telegram의 별도 섹션에 표시되며, 포트폴리오 합계를 100% 이상으로 밀어 올리지 않고, 포트폴리오 STRONG BUY 슬롯을 잠식하지도 않습니다.
 
 ---
 

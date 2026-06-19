@@ -31,7 +31,9 @@ Go to your fork's Settings → Secrets and variables → Actions → **Variables
     "VOO": 1,
     "BTC": 0.0002
   },
-  "totalPortfolioValueUSD": 50000,
+  "watching": ["MSFT", "NVDA", "AMD"],
+  "totalPortfolioValue": 50000,
+  "defaultCurrency": "USD",
   "intradayAlerts": {
     "enabled": true,
     "confidenceIncreaseThreshold": 10
@@ -47,7 +49,9 @@ Go to your fork's Settings → Secrets and variables → Actions → **Variables
 |-------|----------|-------------|
 | `targetPortfolio` | Yes | Target allocation percentages. Keys are ticker symbols, values are percentages that should sum to ~100%. |
 | `currentHoldings` | Yes | Number of shares you currently own. Can include stocks not in your target (e.g., AAPL for ETF overlap detection). |
-| `totalPortfolioValueUSD` | Yes | Your estimated total portfolio value in USD. Used for allocation math when your actual holdings are smaller than the target. |
+| `watching` | No | Array of tickers tracked but **not** in your target portfolio. Get fetched, scored by AI, and surfaced in a separate "Watch List" section — without polluting allocation maths. See [Watch List](#watch-list) below. |
+| `totalPortfolioValue` | Yes | Your estimated total portfolio value (in `defaultCurrency`). Used for allocation math when actual holdings are smaller than the target. |
+| `defaultCurrency` | No | ISO 4217 currency code (e.g. `"USD"`, `"GBP"`, `"AUD"`). Default: `"USD"`. All amounts in emails/Telegram render in this currency; non-matching tickers are FX-converted via live Yahoo Finance rates. |
 | `intradayAlerts` | No | Intraday alert settings (see below). Defaults apply if omitted. |
 
 ---
@@ -75,6 +79,54 @@ Re-analyze a single ticker with the latest price (including after-hours/pre-mark
 Actions → Portfolio Monitor → **Run workflow** → mode: `refresh`, ticker: `SMH`.
 
 Yahoo Finance's `postMarketPrice` and `preMarketPrice` are used when available. Falls back to regular market price if after-hours data isn't available.
+
+---
+
+## Watch List
+
+The optional `watching` array tracks tickers you want **scored and surfaced as signals** but don't want in your target portfolio. They get fetched, prompted, and scored alongside portfolio tickers, but bypass all the allocation-based rules.
+
+**Use it when:**
+
+- You're researching a stock before committing to a target weight
+- You want recommendations on names you don't currently own (e.g. *"is now a good time to start a position in NVDA?"*)
+- You want signals on tickers without inflating your portfolio totals over 100%
+
+### How watch tickers differ from portfolio tickers
+
+| Behaviour | Portfolio ticker | Watch ticker |
+|---|---|---|
+| Counts toward allocation % | Yes | **No** |
+| Allocation gap calculated | Yes | **No** |
+| `gap ≥ 2%` required for STRONG BUY | Yes | **No** — STRONG BUY needs signal confluence instead |
+| Overweight-position guard applies | Yes | **No** |
+| Counts against max-2 STRONG BUY cap | Yes | **No** — surfaces every qualifying watch STRONG BUY |
+| `suggestedBuyValue` populated | Yes (based on gap) | **Always 0** — you size manually |
+| Rendered in main "AI Buy Recommendations" section | Yes | No — separate "Watch List" section |
+| Limit price suggested | Yes | Yes (same logic) |
+| Detailed STRONG BUY analysis page | Yes | Yes |
+
+### Watch STRONG BUY criteria
+
+Because there's no allocation gap to anchor on, watch tickers need stronger signal confluence to earn a STRONG BUY:
+
+- ≥1 price-level signal (P/E below historical avg, 52-week position < 30%, or price below 200-day MA)
+- ≥2 momentum signals confirming the price-level signal (RSI < 35, bullish MACD crossover, Bollinger %B < 0.15, Stochastic %K < 20, OBV rising)
+- No major red flags
+- Confidence ≥ 80% based on signal confluence alone
+- Value rating A or B (for stocks; ETFs and crypto skip this)
+
+### Example
+
+```json
+{
+  "targetPortfolio": { "VOO": 20, "GLD": 10, ... },
+  "currentHoldings": { "VOO": 5, "AAPL": 30 },
+  "watching": ["MSFT", "NVDA", "AMD", "AVGO"]
+}
+```
+
+This portfolio holds AAPL + VOO and tracks MSFT/NVDA/AMD/AVGO purely as research signals. Watch tickers appear in their own email/Telegram section, never push the portfolio total over 100%, and don't crowd portfolio STRONG BUYs.
 
 ---
 

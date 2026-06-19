@@ -53,6 +53,7 @@ What Richfolio does is **monitor your portfolio daily** and help you decide **wh
 - **Reasoning Persistence** — 7-day rolling history of AI conviction per ticker, showing the AI how its own recommendations evolved over time to identify trend momentum
 - **Limit Order Prices** — AI-suggested limit order prices based on nearby support levels (moving averages, recent lows, round numbers)
 - **Allocation Gap Analysis** — current vs target %, flagged by priority with suggested buy amounts
+- **Watch List** — optional `watching` array tracks tickers as research signals without committing them to a target allocation; rendered in a separate section, bypasses allocation-based rules, doesn't compete with portfolio STRONG BUYs
 - **Dynamic P/E Signals** — trailing P/E compared against historical averages fetched from Yahoo Finance (no manual benchmarks needed)
 - **ETF Overlap Detection** — reduces buy priority for ETFs where you already hold overlapping stocks (e.g., holding AAPL reduces VOO's priority)
 - **52-Week Range Signals** — highlights tickers near their 52-week low (opportunity) or high (caution)

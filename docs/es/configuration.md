@@ -33,7 +33,9 @@ Ve a tu fork: Settings → Secrets and variables → Actions → pestaña **Vari
     "VOO": 1,
     "BTC": 0.0002
   },
-  "totalPortfolioValueUSD": 50000,
+  "watching": ["MSFT", "NVDA", "AMD"],
+  "totalPortfolioValue": 50000,
+  "defaultCurrency": "USD",
   "intradayAlerts": {
     "enabled": true,
     "confidenceIncreaseThreshold": 10
@@ -49,7 +51,9 @@ Ve a tu fork: Settings → Secrets and variables → Actions → pestaña **Vari
 |-------|----------|-------------|
 | `targetPortfolio` | Sí | Porcentajes de asignación objetivo. Las claves son símbolos de ticker, los valores son porcentajes que deben sumar ~100%. |
 | `currentHoldings` | Sí | Número de acciones que posees actualmente. Puede incluir acciones que no están en tu objetivo (p. ej., AAPL para detección de overlap de ETFs). |
-| `totalPortfolioValueUSD` | Sí | Tu valor total estimado de portafolio en USD. Se usa para los cálculos de asignación cuando tus tenencias reales son menores que el objetivo. |
+| `watching` | No | Array de tickers que se rastrean pero **no** están en tu portafolio objetivo. Se obtienen, son puntuados por la IA y aparecen en una sección separada "Watch List" — sin contaminar las matemáticas de asignación. Ver [Watch List](#watch-list) abajo. |
+| `totalPortfolioValue` | Sí | Tu valor total estimado de portafolio (en `defaultCurrency`). Se usa para los cálculos de asignación cuando tus tenencias reales son menores que el objetivo. |
+| `defaultCurrency` | No | Código de moneda ISO 4217 (p. ej. `"USD"`, `"GBP"`, `"AUD"`). Default: `"USD"`. Todos los montos en correos/Telegram se renderizan en esta moneda; los tickers en otras divisas se convierten vía tipos de cambio en vivo de Yahoo Finance. |
 | `intradayAlerts` | No | Configuración de alertas intradía (ver abajo). Se aplican defaults si se omite. |
 
 ---
@@ -77,6 +81,54 @@ Re-analiza un único ticker con el último precio (incluyendo after-hours/pre-ma
 Actions → Portfolio Monitor → **Run workflow** → mode: `refresh`, ticker: `SMH`.
 
 Se usan `postMarketPrice` y `preMarketPrice` de Yahoo Finance cuando están disponibles. Cae al precio regular de mercado si los datos after-hours no están disponibles.
+
+---
+
+## Watch List
+
+El array opcional `watching` rastrea tickers que quieres que sean **puntuados y se muestren como señales** pero que no quieres en tu portafolio objetivo. Se obtienen, se incluyen en el prompt y se puntúan junto con los tickers del portafolio, pero saltan todas las reglas basadas en asignación.
+
+**Úsalo cuando:**
+
+- Estás investigando una acción antes de comprometerte a un peso objetivo
+- Quieres recomendaciones sobre nombres que actualmente no posees (p. ej. *"¿es buen momento para iniciar una posición en NVDA?"*)
+- Quieres señales sobre tickers sin inflar los totales de tu portafolio por encima del 100%
+
+### Cómo difieren los tickers de watch de los tickers del portafolio
+
+| Comportamiento | Ticker del portafolio | Ticker de watch |
+|---|---|---|
+| Cuenta para el % de asignación | Sí | **No** |
+| Se calcula brecha de asignación | Sí | **No** |
+| `gap ≥ 2%` requerido para STRONG BUY | Sí | **No** — STRONG BUY requiere confluencia de señales en su lugar |
+| Aplica la guardia de posición sobreponderada | Sí | **No** |
+| Cuenta contra el tope de máximo 2 STRONG BUY | Sí | **No** — muestra cada watch STRONG BUY que califique |
+| `suggestedBuyValue` poblado | Sí (basado en la brecha) | **Siempre 0** — dimensionas manualmente |
+| Renderizado en la sección principal "AI Buy Recommendations" | Sí | No — sección separada "Watch List" |
+| Precio límite sugerido | Sí | Sí (misma lógica) |
+| Página de análisis detallado STRONG BUY | Sí | Sí |
+
+### Criterios STRONG BUY para watch
+
+Como no hay una brecha de asignación en la cual anclarse, los tickers de watch necesitan una confluencia de señales más fuerte para ganarse un STRONG BUY:
+
+- ≥1 señal de nivel de precio (P/E por debajo del promedio histórico, posición en 52 semanas < 30%, o precio por debajo del MA de 200 días)
+- ≥2 señales de momentum que confirmen la señal de nivel de precio (RSI < 35, cruce alcista de MACD, %B de Bollinger < 0.15, %K de Stochastic < 20, OBV subiendo)
+- Sin señales de riesgo mayores
+- Confianza ≥ 80% basada únicamente en la confluencia de señales
+- Calificación de valor A o B (para acciones; ETFs y cripto omiten esto)
+
+### Ejemplo
+
+```json
+{
+  "targetPortfolio": { "VOO": 20, "GLD": 10, ... },
+  "currentHoldings": { "VOO": 5, "AAPL": 30 },
+  "watching": ["MSFT", "NVDA", "AMD", "AVGO"]
+}
+```
+
+Este portafolio tiene AAPL + VOO y rastrea MSFT/NVDA/AMD/AVGO únicamente como señales de investigación. Los tickers de watch aparecen en su propia sección de correo/Telegram, nunca empujan el total del portafolio por encima del 100%, y no compiten con los STRONG BUYs del portafolio.
 
 ---
 

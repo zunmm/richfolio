@@ -86,6 +86,7 @@ When both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, multi-AI mode auto-e
 
 ## Key Gotchas
 
+- **Watch list**: optional `watching: string[]` in `config.json` tracks tickers as research signals without committing them to a target allocation. They're included in `allUniqueTickers()` (so the fetch pipeline reaches them), excluded from `report.items` (no allocation pollution), surfaced as `report.watchingItems`, tagged with `isWatching: true` on the rec by the orchestrator, and routed through WATCH LIST CRITERIA in the prompts. Allocation-based guards (`guardOverweightHold`, `guardStrongBuyCriteria` gap ≥ 2% check, `guardMaxStrongBuy` cap) skip watch tickers; confidence/signal-presence checks still bind. Renderers branch on `rec.isWatching` to put them in a separate "Watch List" section. `suggestedBuyValue` is forced to 0 by `guardBuyValueSanity`.
 - **yahoo-finance2 v3**: Must use `new YahooFinance()` (instance-based), not default import
 - **Crypto tickers**: BTC → `BTC-USD`, ETH → `ETH-USD` via `toYahooTicker()` in config.ts
 - **ETFs have no P/E**: Returns null — handled gracefully throughout, show "N/A"

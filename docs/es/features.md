@@ -8,7 +8,7 @@ permalink: /features.html
 
 # Funcionalidades
 
-Richfolio empaqueta más de 18 capacidades en un único pipeline — todas funcionando sobre APIs de plan gratuito.
+Richfolio empaqueta más de 19 capacidades en un único pipeline — todas funcionando sobre APIs de plan gratuito.
 
 ---
 
@@ -135,6 +135,22 @@ Las señales de fondo se muestran en el correo diario, las alertas intradía y l
 Compara tus tenencias actuales contra tus porcentajes de asignación objetivo. Cada ticker recibe una puntuación según lo alejado que esté de su objetivo, con montos de compra sugeridos en dólares y acciones.
 
 El análisis usa el mayor entre el valor real de tu portafolio o la estimación configurada, de modo que los cálculos de brecha siguen siendo útiles incluso cuando tus tenencias actuales son menores que el tamaño objetivo del portafolio.
+
+---
+
+## Watch List (tickers de investigación)
+
+El array opcional `watching` en `config.json` rastrea tickers que quieres que sean **puntuados y se muestren como señales** sin comprometerlos a una asignación objetivo. Los tickers de watch pasan por el mismo pipeline de fetch + IA que los tickers del portafolio, pero saltan las reglas basadas en asignación:
+
+- Excluidos de las matemáticas de porcentaje de asignación — el total de tu portafolio se mantiene en 100%
+- Las reglas de brecha de asignación (gap ≥ 2% para STRONG BUY, gap > 0% requerido) **no aplican**
+- No cuentan contra el tope de máximo 2 STRONG BUY — cada watch STRONG BUY que califique se muestra
+- `suggestedBuyValue` es siempre 0 — tú decides el tamaño de la posición manualmente
+- Renderizados en una sección separada "Watch List" en correo y Telegram (encabezado amarillo, separador discontinuo)
+
+Como no hay una brecha de asignación en la cual anclarse, los STRONG BUYs de watch requieren una confluencia de señales más fuerte: ≥1 señal de nivel de precio + ≥2 señales de momentum + sin señales de riesgo mayores + calificación de valor A/B (para acciones). Usa la watch list para candidatos de investigación que podrías agregar a tu portafolio objetivo más adelante — *"¿es buen momento para iniciar una posición en NVDA?"* — sin contaminar las matemáticas de asignación.
+
+Ver [Configuración → Watch List](configuration#watch-list) para el esquema.
 
 ---
 

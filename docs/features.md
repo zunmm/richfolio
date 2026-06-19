@@ -6,7 +6,7 @@ nav_order: 2
 
 # Features
 
-Richfolio packs 18+ capabilities into a single pipeline — all running on free-tier APIs.
+Richfolio packs 19+ capabilities into a single pipeline — all running on free-tier APIs.
 
 ---
 
@@ -133,6 +133,22 @@ Bottom signals are displayed in the daily email, intraday alerts, and Telegram m
 Compares your current holdings against your target allocation percentages. Each ticker is scored by how far it is from its target, with suggested buy amounts in dollars and shares.
 
 The analysis uses the higher of your actual portfolio value or configured estimate, so gap calculations remain meaningful even when your current holdings are smaller than your target portfolio size.
+
+---
+
+## Watch List (Research Tickers)
+
+The optional `watching` array in `config.json` tracks tickers you want **scored and surfaced as signals** without committing them to a target allocation. Watch tickers go through the same fetch + AI pipeline as portfolio tickers, but bypass allocation-based rules:
+
+- Excluded from allocation percentage maths — your portfolio total stays at 100%
+- Allocation-gap rules (gap ≥ 2% for STRONG BUY, gap > 0% required) **do not apply**
+- Don't count against the max-2 STRONG BUY cap — every qualifying watch STRONG BUY surfaces
+- `suggestedBuyValue` is always 0 — you decide position size manually
+- Rendered in a separate "Watch List" section in email and Telegram (yellow heading, dashed separator)
+
+Because there's no allocation gap to anchor on, watch STRONG BUYs require stronger signal confluence: ≥1 price-level signal + ≥2 momentum signals + no major red flags + value rating A/B (for stocks). Use the watch list for research candidates you might add to your target portfolio later — *"is now a good time to start a position in NVDA?"* — without polluting your allocation maths.
+
+See [Configuration → Watch List](configuration#watch-list) for the schema.
 
 ---
 

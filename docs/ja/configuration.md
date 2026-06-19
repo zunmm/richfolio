@@ -33,7 +33,9 @@ fork したリポジトリの Settings → Secrets and variables → Actions →
     "VOO": 1,
     "BTC": 0.0002
   },
-  "totalPortfolioValueUSD": 50000,
+  "watching": ["MSFT", "NVDA", "AMD"],
+  "totalPortfolioValue": 50000,
+  "defaultCurrency": "USD",
   "intradayAlerts": {
     "enabled": true,
     "confidenceIncreaseThreshold": 10
@@ -49,7 +51,9 @@ fork したリポジトリの Settings → Secrets and variables → Actions →
 |------|------|------|
 | `targetPortfolio` | はい | 目標配分のパーセンテージ。キーはティッカーシンボル、値はパーセンテージで、合計は約 100% になるようにします。 |
 | `currentHoldings` | はい | 現在保有している株数。目標に含まれない銘柄も含められます（例：ETF 重複検出のための AAPL）。 |
-| `totalPortfolioValueUSD` | はい | あなたのポートフォリオ総額の見積もり（USD）。実際の保有が目標より小さい場合の配分計算に使用します。 |
+| `watching` | いいえ | 追跡したいが目標ポートフォリオに**含めない**ティッカーの配列。データ取得、AI スコアリングを行ったうえで、配分計算を汚さずに別の「Watch List」セクションに表示されます。下記の [Watch List](#watch-list) を参照してください。 |
+| `totalPortfolioValue` | はい | あなたのポートフォリオ総額の見積もり（`defaultCurrency` 建て）。実際の保有が目標より小さい場合の配分計算に使用します。 |
+| `defaultCurrency` | いいえ | ISO 4217 通貨コード（例：`"USD"`、`"GBP"`、`"AUD"`）。デフォルト：`"USD"`。メール／Telegram 内のすべての金額はこの通貨で表示され、一致しないティッカーは Yahoo Finance のライブレートで FX 換算されます。 |
 | `intradayAlerts` | いいえ | ザラ場アラートの設定（下記参照）。省略時はデフォルト値が適用されます。 |
 
 ---
@@ -77,6 +81,54 @@ fork したリポジトリの Settings → Secrets and variables → Actions →
 Actions → Portfolio Monitor → **Run workflow** → mode: `refresh`、ticker: `SMH`。
 
 利用可能な場合は Yahoo Finance の `postMarketPrice` と `preMarketPrice` を使用します。時間外データが利用できない場合は通常市場価格にフォールバックします。
+
+---
+
+## Watch List
+
+オプショナルな `watching` 配列は、**スコアリングしてシグナルとして表示したい**ものの、目標ポートフォリオには含めたくないティッカーを追跡します。ポートフォリオ内のティッカーと並んでデータ取得・プロンプト投入・スコアリングは行われますが、配分ベースのルールはすべてバイパスします。
+
+**こんなときに使えます：**
+
+- 目標ウェイトを決める前に、銘柄をリサーチしたいとき
+- 現在保有していない銘柄について推奨が欲しいとき（例：*「NVDA でポジションを始めるのに今は良いタイミング？」*）
+- ポートフォリオ合計を 100% 超に膨らませずに、ティッカーへのシグナルが欲しいとき
+
+### Watch ティッカーとポートフォリオティッカーの違い
+
+| 挙動 | ポートフォリオティッカー | Watch ティッカー |
+|---|---|---|
+| 配分 % にカウントされる | はい | **いいえ** |
+| 配分ギャップを算出 | はい | **いいえ** |
+| STRONG BUY に `gap ≥ 2%` 必須 | はい | **いいえ** — 代わりにシグナル合流が必要 |
+| オーバーウェイトポジションガードの対象 | はい | **いいえ** |
+| STRONG BUY 最大 2 件上限のカウント対象 | はい | **いいえ** — 該当する watch STRONG BUY はすべて表示 |
+| `suggestedBuyValue` が入る | はい（ギャップに基づく） | **常に 0** — サイズは手動で決定 |
+| メイン「AI 買い推奨」セクションに表示 | はい | いいえ — 別の「Watch List」セクションに表示 |
+| 指値価格の提案 | はい | はい（同じロジック） |
+| STRONG BUY 詳細分析ページ | はい | はい |
+
+### Watch STRONG BUY の基準
+
+参照できる配分ギャップがないため、watch ティッカーは STRONG BUY を獲得するためにより強いシグナル合流が必要です：
+
+- ≥1 個の価格レベルシグナル（P/E が過去平均以下、52 週ポジション < 30%、または株価が 200 日線以下）
+- 価格レベルシグナルを裏付ける ≥2 個のモメンタムシグナル（RSI < 35、強気の MACD クロスオーバー、ボリンジャー %B < 0.15、ストキャスティクス %K < 20、OBV 上昇）
+- 重大なレッドフラグなし
+- シグナル合流のみに基づく信頼度 ≥ 80%
+- バリュー評価 A または B（株式の場合。ETF と暗号資産はスキップ）
+
+### 例
+
+```json
+{
+  "targetPortfolio": { "VOO": 20, "GLD": 10, ... },
+  "currentHoldings": { "VOO": 5, "AAPL": 30 },
+  "watching": ["MSFT", "NVDA", "AMD", "AVGO"]
+}
+```
+
+このポートフォリオは AAPL + VOO を保有し、MSFT/NVDA/AMD/AVGO はリサーチ用のシグナルとしてのみ追跡しています。Watch ティッカーは独自のメール／Telegram セクションに表示され、ポートフォリオ合計を 100% 超に押し上げることはなく、ポートフォリオの STRONG BUY を圧迫することもありません。
 
 ---
 
