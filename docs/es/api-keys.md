@@ -145,6 +145,19 @@ Agrega ambos como GitHub Secrets:
 
 ---
 
+## Publicación en redes sociales — Opcional
+{: .text-yellow-200}
+
+Richfolio puede publicar señales de compra genéricas en páginas públicas de X, Facebook y LinkedIn. Cada plataforma es opcional y permanece desactivada hasta que se configure. Secrets requeridos por plataforma:
+
+- **Facebook:** `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`
+- **LinkedIn:** `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_ORG_URN`
+- **X/Twitter:** `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET`
+
+**Notas:** Las publicaciones son genéricas — no se divulgan tenencias ni asignaciones. Si no está configurada, la publicación en redes sociales se omite. Ver [Publicación en redes sociales](social-setup) para la configuración paso a paso de cada plataforma.
+
+---
+
 ## Resumen
 
 | Clave | Requerido | Servicio |
@@ -156,5 +169,8 @@ Agrega ambos como GitHub Secrets:
 | `ANTHROPIC_API_KEY` | No | Proveedor de IA (Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | No | Entrega Telegram |
 | `TELEGRAM_CHAT_ID` | No | Entrega Telegram |
+| `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | No | Publicación en Página de Facebook |
+| `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | No | Publicación en Página de LinkedIn |
+| `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | No | Publicación en X/Twitter |
 | `CLAUDE_MODEL` | No | Sobrescribir el modelo de Claude (por defecto: `claude-sonnet-4-6`) |
 | `AI_DETAILED_PROVIDER` | No | Forzar `gemini` o `claude` para la página de análisis de STRONG BUY |

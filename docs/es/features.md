@@ -261,3 +261,15 @@ Cada reporte se entrega por dos canales:
 - **Telegram** — resumen condensado en texto plano vía Telegram Bot API, optimizado para lectura móvil (incluye técnicos y precios límite para STRONG BUY)
 
 Ambos canales funcionan de forma independiente — si uno no está configurado, el otro sigue entregando.
+
+---
+
+## Publicación en redes sociales (opcional)
+
+Más allá del correo y Telegram, Richfolio puede **opcionalmente** publicar señales de compra en páginas sociales públicas — **X/Twitter**, una **Página de Facebook** y una **Página de LinkedIn** — en los modos diario e intradía (nunca en semanal ni refresh). Las publicaciones son deliberadamente genéricas: solo señales **STRONG BUY** y **BUY**, cada una mostrando ticker, acción, confianza y una breve razón.
+
+No se divulga nada privado — asignaciones, brechas, tenencias y montos de compra sugeridos **nunca** se publican, y los tickers del portafolio y de la watch list se combinan de forma uniforme como "señales" para que la propiedad nunca se revele. Cada publicación termina con un descargo de responsabilidad *"Not financial advice"*.
+
+Cada plataforma está condicionada de forma independiente a sus propias credenciales y publica dentro de su propio límite de error, de modo que una falla social nunca afecta los resúmenes de correo/Telegram. Permanece completamente desactivado hasta que agregues credenciales.
+
+Ver [Publicación en redes sociales](social-setup) para la configuración completa (Facebook, LinkedIn, X) y el interruptor de `config.json`.

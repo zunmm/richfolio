@@ -143,6 +143,19 @@ Add both as GitHub Secrets:
 
 ---
 
+## Social Posting — Optional
+{: .text-yellow-200}
+
+Richfolio can publish generic buy signals to public pages on X, Facebook, and LinkedIn. Every platform is optional and stays off until configured. Required secrets per platform:
+
+- **Facebook:** `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`
+- **LinkedIn:** `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_ORG_URN`
+- **X/Twitter:** `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET`
+
+**Notes:** Posts are generic — no holdings or allocations are disclosed. If unset, social posting is skipped. See [Social Posting](social-setup) for step-by-step setup of each platform.
+
+---
+
 ## Summary
 
 | Key | Required | Service |
@@ -154,5 +167,8 @@ Add both as GitHub Secrets:
 | `ANTHROPIC_API_KEY` | No | AI provider (Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram delivery |
 | `TELEGRAM_CHAT_ID` | No | Telegram delivery |
+| `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | No | Facebook Page posting |
+| `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | No | LinkedIn Page posting |
+| `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | No | X/Twitter posting |
 | `CLAUDE_MODEL` | No | Override Claude model (default: `claude-sonnet-4-6`) |
 | `AI_DETAILED_PROVIDER` | No | Force `gemini` or `claude` for the STRONG BUY analysis page |

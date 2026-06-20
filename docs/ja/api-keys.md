@@ -145,6 +145,19 @@ Telegram アカウントに凝縮されたサマリーを配信します。
 
 ---
 
+## ソーシャル投稿 — オプション
+{: .text-yellow-200}
+
+Richfolio は汎用的な買いシグナルを X、Facebook、LinkedIn の公開ページに投稿できます。すべてのプラットフォームはオプションで、設定するまではオフのままです。プラットフォームごとに必要な Secret：
+
+- **Facebook：** `FACEBOOK_PAGE_ID`、`FACEBOOK_PAGE_TOKEN`
+- **LinkedIn：** `LINKEDIN_ACCESS_TOKEN`、`LINKEDIN_ORG_URN`
+- **X/Twitter：** `X_API_KEY`、`X_API_SECRET`、`X_ACCESS_TOKEN`、`X_ACCESS_TOKEN_SECRET`
+
+**注意：** 投稿は汎用的です — 保有や配分は一切開示されません。未設定の場合、ソーシャル投稿はスキップされます。各プラットフォームの手順ごとのセットアップは[ソーシャル投稿](social-setup)を参照してください。
+
+---
+
 ## まとめ
 
 | キー | 必須 | サービス |
@@ -156,5 +169,8 @@ Telegram アカウントに凝縮されたサマリーを配信します。
 | `ANTHROPIC_API_KEY` | いいえ | AI プロバイダ（Anthropic Claude） |
 | `TELEGRAM_BOT_TOKEN` | いいえ | Telegram 配信 |
 | `TELEGRAM_CHAT_ID` | いいえ | Telegram 配信 |
+| `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | いいえ | Facebook ページ投稿 |
+| `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | いいえ | LinkedIn ページ投稿 |
+| `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | いいえ | X/Twitter 投稿 |
 | `CLAUDE_MODEL` | いいえ | Claude モデルを上書き（デフォルト：`claude-sonnet-4-6`） |
 | `AI_DETAILED_PROVIDER` | いいえ | STRONG BUY 分析ページに `gemini` または `claude` を強制 |

@@ -145,6 +145,19 @@ Telegram 계정으로 압축된 요약을 전달합니다.
 
 ---
 
+## 소셜 게시 — 선택
+{: .text-yellow-200}
+
+Richfolio는 X, Facebook, LinkedIn의 공개 페이지에 일반적인 매수 신호를 게시할 수 있습니다. 모든 플랫폼은 선택 사항이며 설정하기 전까지는 꺼져 있습니다. 플랫폼별 필수 Secret:
+
+- **Facebook:** `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`
+- **LinkedIn:** `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_ORG_URN`
+- **X/Twitter:** `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET`
+
+**참고:** 게시물은 일반적입니다 — 보유 종목이나 배분은 공개되지 않습니다. 설정되지 않으면 소셜 게시가 건너뛰어집니다. 각 플랫폼의 단계별 설정은 [소셜 게시](social-setup)를 참고하세요.
+
+---
+
 ## 요약
 
 | 키 | 필수 | 서비스 |
@@ -156,5 +169,8 @@ Telegram 계정으로 압축된 요약을 전달합니다.
 | `ANTHROPIC_API_KEY` | 아니오 | AI 제공사 (Anthropic Claude) |
 | `TELEGRAM_BOT_TOKEN` | 아니오 | Telegram 전달 |
 | `TELEGRAM_CHAT_ID` | 아니오 | Telegram 전달 |
+| `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | 아니오 | Facebook 페이지 게시 |
+| `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | 아니오 | LinkedIn 페이지 게시 |
+| `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | 아니오 | X/Twitter 게시 |
 | `CLAUDE_MODEL` | 아니오 | Claude 모델 재정의 (기본값: `claude-sonnet-4-6`) |
 | `AI_DETAILED_PROVIDER` | 아니오 | STRONG BUY 분석 페이지에 `gemini` 또는 `claude` 강제 사용 |

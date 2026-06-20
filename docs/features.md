@@ -259,3 +259,15 @@ Every report is delivered through two channels:
 - **Telegram** — condensed plain-text summary via Telegram Bot API, optimized for mobile reading (includes technicals and limit prices for STRONG BUY)
 
 Both channels work independently — if one isn't configured, the other still delivers.
+
+---
+
+## Social Posting (Optional)
+
+Beyond email and Telegram, Richfolio can **optionally** publish buy signals to public social pages — **X/Twitter**, a **Facebook Page**, and a **LinkedIn Page** — in daily and intraday modes (never weekly or refresh). Posts are deliberately generic: only **STRONG BUY** and **BUY** signals, each showing ticker, action, confidence, and a short reason.
+
+Nothing private is disclosed — allocations, gaps, holdings, and suggested buy amounts are **never** posted, and portfolio and watch-list tickers are merged uniformly as "signals" so ownership is never revealed. Every post ends with a *"Not financial advice"* disclaimer.
+
+Each platform is independently gated on its own credentials and posts inside its own error boundary, so a social failure never affects the email/Telegram briefs. It stays completely off until you add credentials.
+
+See [Social Posting](social-setup) for full setup (Facebook, LinkedIn, X) and the `config.json` toggle.
