@@ -31,5 +31,9 @@
     "minConfidenceToAlert": 80,
     "actionUpgradesAlert": true,
     "onlyAlertForActions": ["STRONG BUY", "BUY"]
+  },
+  "social": {
+    "enabled": true,
+    "includeLinkInX": false
   }
 }

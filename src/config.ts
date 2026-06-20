@@ -37,6 +37,23 @@ export interface PortfolioConfig {
    * for tickers you're researching without committing to a target weight.
    */
   watching?: string[];
+  /**
+   * Public social posting (X / Facebook Page / LinkedIn Page). Posts are
+   * generic — STRONG BUY / BUY signals only, no holdings or allocation data.
+   * Each platform additionally gates on its own env credentials, so leaving
+   * keys unset skips that platform regardless of this toggle.
+   */
+  social?: SocialConfig;
+}
+
+export interface SocialConfig {
+  /** Master kill-switch. When false, no platform is posted to. Default: true. */
+  enabled?: boolean;
+  /**
+   * Include the analysis link in X posts. Off by default because a link
+   * raises X's pay-per-use cost (~$0.20 vs ~$0.015 per post).
+   */
+  includeLinkInX?: boolean;
 }
 
 // ── Load config.json ────────────────────────────────────────────────
@@ -105,6 +122,13 @@ const DEFAULT_INTRADAY: IntradayAlertConfig = {
 export const intradayConfig: IntradayAlertConfig = {
   ...DEFAULT_INTRADAY,
   ...json.intradayAlerts,
+};
+
+// ── Social posting config with defaults ─────────────────────────────
+export const socialConfig: SocialConfig = {
+  enabled: true,
+  includeLinkInX: false,
+  ...json.social,
 };
 
 // ── Environment-only settings ───────────────────────────────────────

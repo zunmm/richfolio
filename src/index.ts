@@ -17,6 +17,7 @@ import { sendWeeklyBrief } from "./weeklyEmail.js";
 import { saveBaseline, loadBaseline, loadReasoningHistory, saveReasoningHistory } from "./state.js";
 import { compareWithBaseline } from "./intradayCompare.js";
 import { sendIntradayAlert, sendRefreshEmail } from "./intradayEmail.js";
+import { sendSocialPosts, intradayAlertsToSignals } from "./social.js";
 import { fetchDetailedAnalyses } from "./detailedAnalysis.js";
 import { buildAnalysisUrl } from "./analysisUrl.js";
 import { hasStrongBuyVote, findStrongBuyVoter } from "./aiAggregation.js";
@@ -266,6 +267,11 @@ try {
       } catch (err) {
         console.error("Telegram send failed:", (err as Error).message);
       }
+      try {
+        await sendSocialPosts(intradayAlertsToSignals(alerts), "intraday");
+      } catch (err) {
+        console.error("Social post failed:", (err as Error).message);
+      }
 
       // Update baseline so next intraday check compares against post-alert state
       saveBaseline({
@@ -315,6 +321,11 @@ try {
       await sendTelegramBrief(report, news, aiRecs, technicals, prices);
     } catch (err) {
       console.error("Telegram send failed:", (err as Error).message);
+    }
+    try {
+      await sendSocialPosts(aiRecs, "daily");
+    } catch (err) {
+      console.error("Social post failed:", (err as Error).message);
     }
   }
 

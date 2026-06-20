@@ -73,6 +73,9 @@ In GitHub Actions, `config.json` is written from the `CONFIG_JSON` Actions varia
 - `ANTHROPIC_API_KEY` — from console.anthropic.com (optional AI provider — Anthropic Claude)
 - `TELEGRAM_BOT_TOKEN` — from @BotFather (optional)
 - `TELEGRAM_CHAT_ID` — from @userinfobot (optional)
+- `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X/Twitter OAuth 1.0a (optional; X has no free tier since Feb 2026 — pay-per-use)
+- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` — Facebook Page posting (optional; needs `pages_manage_posts` via Meta app review)
+- `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` — LinkedIn Page posting (optional; needs `w_organization_social` + "Share on LinkedIn" approval)
 
 When both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, multi-AI mode auto-engages: providers run concurrently, scores average per ticker, per-AI breakdown shown in email/Telegram, STRONG BUY requires unanimous agreement. See `src/aiOrchestrator.ts` and `src/aiAggregation.ts`.
 
@@ -87,6 +90,7 @@ When both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, multi-AI mode auto-e
 ## Key Gotchas
 
 - **Watch list**: optional `watching: string[]` in `config.json` tracks tickers as research signals without committing them to a target allocation. They're included in `allUniqueTickers()` (so the fetch pipeline reaches them), excluded from `report.items` (no allocation pollution), surfaced as `report.watchingItems`, tagged with `isWatching: true` on the rec by the orchestrator, and routed through WATCH LIST CRITERIA in the prompts. Allocation-based guards (`guardOverweightHold`, `guardStrongBuyCriteria` gap ≥ 2% check, `guardMaxStrongBuy` cap) skip watch tickers; confidence/signal-presence checks still bind. Renderers branch on `rec.isWatching` to put them in a separate "Watch List" section. `suggestedBuyValue` is forced to 0 by `guardBuyValueSanity`.
+- **Social posting**: `src/social.ts` posts generic STRONG BUY / BUY signals publicly to X / Facebook Page / LinkedIn Page, **daily + intraday only** (never weekly/refresh), wired in `index.ts` after the Telegram sends. Posts are deliberately generic — `buildSignalLines()` is the single privacy chokepoint: it projects recs onto an allowlist (`ticker`, `tickerFullName`, `action`, `confidence`, `valueRating`, `reason`, `analysisUrl`) and **never** reads `suggestedBuyValue`/gaps/holdings. Portfolio and watch-list recs are merged uniformly (no portfolio-vs-watchlist labels) so ownership never leaks. Each platform gates on its own env credentials (graceful skip if unset) and posts inside its own try/catch so one failure never blocks the others or the already-sent email/Telegram. `config.json` `social.enabled` is a master kill-switch; `social.includeLinkInX` defaults false (a link raises X's pay-per-use cost). X uses OAuth 1.0a (signed with Node `crypto`, no npm dep); FB/LinkedIn use bearer/page tokens via native `fetch`. X has had no free tier since Feb 2026 (pay-per-use ~$0.015/post) — built but dormant until keys are added
 - **yahoo-finance2 v3**: Must use `new YahooFinance()` (instance-based), not default import
 - **Crypto tickers**: BTC → `BTC-USD`, ETH → `ETH-USD` via `toYahooTicker()` in config.ts
 - **ETFs have no P/E**: Returns null — handled gracefully throughout, show "N/A"

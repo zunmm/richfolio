@@ -1,0 +1,138 @@
+import { test, describe } from "node:test";
+import assert from "node:assert/strict";
+import {
+  buildSignalLines,
+  buildPostText,
+  intradayAlertsToSignals,
+  DISCLAIMER,
+  type SignalSource,
+} from "../src/socialContent.js";
+import type { IntradayAlert } from "../src/intradayCompare.js";
+
+// A rec carries private allocation fields alongside the generic ones. We feed
+// distinctive private values and assert they never reach the public output.
+const PRIVATE_BUY_VALUE = 99999;
+
+function makeSource(overrides?: Partial<SignalSource> & Record<string, unknown>): SignalSource {
+  return {
+    ticker: "NVDA",
+    tickerFullName: "NVIDIA Corp",
+    action: "STRONG BUY",
+    confidence: 88,
+    reason: "Strong momentum and undervalued vs peers.",
+    valueRating: "undervalued",
+    analysisUrl: "https://example.com/a/nvda",
+    // Private fields that exist on the real AIBuyRecommendation but must be ignored:
+    suggestedBuyValue: PRIVATE_BUY_VALUE,
+    suggestedBuyShares: 12345,
+    gapPct: 7.7,
+    ...overrides,
+  } as SignalSource;
+}
+
+describe("buildSignalLines", () => {
+  test("keeps only STRONG BUY and BUY", () => {
+    const lines = buildSignalLines([
+      makeSource({ ticker: "A", action: "STRONG BUY" }),
+      makeSource({ ticker: "B", action: "BUY" }),
+      makeSource({ ticker: "C", action: "HOLD" }),
+      makeSource({ ticker: "D", action: "WAIT" }),
+    ]);
+    assert.deepEqual(
+      lines.map((l) => l.ticker),
+      ["A", "B"],
+    );
+  });
+
+  test("sorts STRONG BUY before BUY, then by confidence", () => {
+    const lines = buildSignalLines([
+      makeSource({ ticker: "B", action: "BUY", confidence: 90 }),
+      makeSource({ ticker: "S1", action: "STRONG BUY", confidence: 70 }),
+      makeSource({ ticker: "S2", action: "STRONG BUY", confidence: 85 }),
+    ]);
+    assert.deepEqual(
+      lines.map((l) => l.ticker),
+      ["S2", "S1", "B"],
+    );
+  });
+
+  test("projects onto the allowlist — private fields do not survive", () => {
+    const [line] = buildSignalLines([makeSource()]);
+    assert.deepEqual(Object.keys(line).sort(), [
+      "action",
+      "analysisUrl",
+      "confidence",
+      "reason",
+      "ticker",
+      "tickerFullName",
+      "valueRating",
+    ]);
+    assert.equal((line as Record<string, unknown>).suggestedBuyValue, undefined);
+    assert.equal((line as Record<string, unknown>).gapPct, undefined);
+  });
+});
+
+describe("buildPostText", () => {
+  const sources = [
+    makeSource({ ticker: "NVDA", action: "STRONG BUY", confidence: 88 }),
+    makeSource({ ticker: "SMH", action: "BUY", confidence: 76 }),
+  ];
+
+  test("never leaks private values on any platform", () => {
+    for (const platform of ["x", "facebook", "linkedin"] as const) {
+      const text = buildPostText(sources, platform, "daily", { includeLinkInX: true });
+      assert.ok(!text.includes(String(PRIVATE_BUY_VALUE)), `${platform} leaked buy value`);
+      assert.ok(!text.includes("12345"), `${platform} leaked shares`);
+      assert.ok(!text.includes("7.7"), `${platform} leaked gap`);
+    }
+  });
+
+  test("appends the disclaimer", () => {
+    const text = buildPostText(sources, "linkedin", "daily");
+    assert.ok(text.includes(DISCLAIMER));
+  });
+
+  test("respects the 280-char X budget", () => {
+    const many = Array.from({ length: 10 }, (_, i) =>
+      makeSource({ ticker: `TICK${i}`, reason: "x".repeat(500) }),
+    );
+    const text = buildPostText(many, "x", "daily", { includeLinkInX: true });
+    assert.ok(text.length <= 280, `X post was ${text.length} chars`);
+  });
+
+  test("merges portfolio + watch recs with no portfolio/watchlist labels", () => {
+    const text = buildPostText(sources, "facebook", "daily");
+    assert.ok(!/portfolio/i.test(text.replace(/Richfolio/g, "")));
+    assert.ok(!/watch ?list/i.test(text));
+  });
+
+  test("daily vs intraday header differs", () => {
+    assert.ok(buildPostText(sources, "facebook", "daily").startsWith("📊"));
+    assert.ok(buildPostText(sources, "facebook", "intraday").startsWith("⚡"));
+  });
+
+  test("empty when no actionable signals", () => {
+    assert.equal(buildPostText([makeSource({ action: "HOLD" })], "x", "daily"), "");
+  });
+});
+
+describe("intradayAlertsToSignals", () => {
+  test("uses current action/confidence and the generic fields only", () => {
+    const alert = {
+      ticker: "NVDA",
+      tickerFullName: "NVIDIA Corp",
+      currentAction: "STRONG BUY",
+      currentConfidence: 90,
+      morningAction: "BUY",
+      morningConfidence: 70,
+      reason: "Upgraded.",
+      valueRating: "undervalued",
+      analysisUrl: "https://example.com/x",
+      suggestedBuyValue: PRIVATE_BUY_VALUE,
+    } as unknown as IntradayAlert;
+    const [s] = intradayAlertsToSignals([alert]);
+    assert.equal(s.action, "STRONG BUY");
+    assert.equal(s.confidence, 90);
+    assert.equal((s as Record<string, unknown>).suggestedBuyValue, undefined);
+  });
+});
