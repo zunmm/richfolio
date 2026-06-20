@@ -14,8 +14,12 @@
 [![npm](https://img.shields.io/npm/v/richfolio?logo=npm&logoColor=white)](https://www.npmjs.com/package/richfolio)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Cost](https://img.shields.io/badge/Cost-%240%2Fmonth-2ecc71)](https://furic.github.io/richfolio/features)
+[![Facebook](https://img.shields.io/badge/Facebook-richfolioapp-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/richfolioapp/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-richfolio-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/richfolio)
 
 A zero-maintenance portfolio monitoring system. Set your target allocations once, get daily briefings with allocation gaps, AI-powered buy signals, and relevant news — delivered via email and Telegram, automatically via GitHub Actions.
+
+> 📣 Follow Richfolio's public signals on [Facebook](https://www.facebook.com/richfolioapp/) and [LinkedIn](https://www.linkedin.com/company/richfolio) — generic STRONG BUY / BUY signals, no holdings disclosed. *Not financial advice.*
 
 <p align="center">
   <img src="docs/screenshots/morning-debrief.png" alt="Daily Brief" width="260">
