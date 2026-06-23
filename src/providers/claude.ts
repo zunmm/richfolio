@@ -15,7 +15,7 @@ const observationToolSchema = {
     observations: {
       type: "array",
       description:
-        "One entry per ticker in the portfolio. Return entries for ALL tickers even if no signals are present (use empty arrays).",
+        "One entry per ticker shown — both portfolio holdings AND tickers marked [WATCH LIST]. Return entries for ALL tickers even if no signals are present (use empty arrays).",
       items: {
         type: "object",
         properties: {
