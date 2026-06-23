@@ -126,6 +126,16 @@ const decisionToolSchema = {
 // available or wants to use Haiku for cheaper runs.
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 
+// Output ceiling per stage. This is a cap, not a cost — tokens are only billed
+// when actually generated. It must comfortably exceed the largest possible
+// structured response: Stage 1 emits one verbose observation per ticker across
+// the WHOLE universe (portfolio + watch list), so a large watch list can push
+// 24+ entries. At 8192 the tool-call JSON was truncated mid-stream for big
+// universes, which the SDK surfaces as an empty `observations` array — Claude
+// then silently contributed nothing. 16384 leaves generous headroom; Sonnet
+// 4.6 supports far more.
+const MAX_OUTPUT_TOKENS = 16384;
+
 interface ClaudeToolCall {
   type: string;
   name?: string;
@@ -173,7 +183,7 @@ export class ClaudeProvider implements AIProvider {
 
     const obsResponse = await client.messages.create({
       model,
-      max_tokens: 8192,
+      max_tokens: MAX_OUTPUT_TOKENS,
       tools: [
         {
           name: "submit_observations",
@@ -184,6 +194,17 @@ export class ClaudeProvider implements AIProvider {
       tool_choice: { type: "tool", name: "submit_observations" },
       messages: [{ role: "user", content: obsPrompt }],
     });
+
+    // A truncated tool call yields a tool_use block whose JSON is incomplete,
+    // which the SDK parses into an empty `observations` array. Fail loudly so
+    // the orchestrator drops Claude and degrades cleanly, rather than letting
+    // Claude "succeed" with zero observations and contribute nothing.
+    if (obsResponse.stop_reason === "max_tokens") {
+      throw new Error(
+        `Claude Stage 1 truncated (stop_reason=max_tokens at ${MAX_OUTPUT_TOKENS} tokens) — ` +
+          `observation output exceeded the cap. Raise MAX_OUTPUT_TOKENS.`,
+      );
+    }
 
     const obsInput = extractToolInput(obsResponse.content, "submit_observations") as {
       observations: TickerObservation[];
@@ -212,7 +233,7 @@ export class ClaudeProvider implements AIProvider {
 
     const decResponse = await client.messages.create({
       model,
-      max_tokens: 8192,
+      max_tokens: MAX_OUTPUT_TOKENS,
       tools: [
         {
           name: "submit_recommendations",
@@ -223,6 +244,13 @@ export class ClaudeProvider implements AIProvider {
       tool_choice: { type: "tool", name: "submit_recommendations" },
       messages: [{ role: "user", content: decPrompt }],
     });
+
+    if (decResponse.stop_reason === "max_tokens") {
+      throw new Error(
+        `Claude Stage 2 truncated (stop_reason=max_tokens at ${MAX_OUTPUT_TOKENS} tokens) — ` +
+          `recommendation output exceeded the cap. Raise MAX_OUTPUT_TOKENS.`,
+      );
+    }
 
     const decInput = extractToolInput(decResponse.content, "submit_recommendations") as {
       recommendations: AIBuyRecommendation[];
