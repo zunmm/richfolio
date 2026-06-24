@@ -22,7 +22,7 @@ aux_links:
 
 aux_links_new_tab: true
 
-footer_content: "Richfolio &mdash; free, open-source portfolio monitoring."
+footer_content: "Richfolio &mdash; free, open-source portfolio monitoring. &middot; <a href=\"/richfolio/privacy\">Privacy Policy</a>"
 
 nav_sort: order
 
