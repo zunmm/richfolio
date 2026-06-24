@@ -11,7 +11,7 @@ search_exclude: true
 
 Richfolio ("Richfolio", "we", "us") is a free, open-source portfolio-monitoring tool that sends private daily and intraday briefings to its operator and optionally publishes generic market signals to public social pages (X, a Facebook Page, and a LinkedIn Page). This policy explains what data Richfolio handles and how.
 
-Richfolio is operated by an individual sole trader (ABN 87 480 911 774). Source code: [github.com/furic/richfolio](https://github.com/furic/richfolio).
+Richfolio is a **non-commercial, open-source project** — it is free to use, has no paid tier, runs no advertising, and does not monetise data. Its full source code is public at [github.com/furic/richfolio](https://github.com/furic/richfolio). The project is operated by an individual sole trader (ABN 87 480 911 774).
 
 ---
 
