@@ -20,6 +20,9 @@ const X_ACCESS_TOKEN_SECRET = process.env.X_ACCESS_TOKEN_SECRET;
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID;
 const FACEBOOK_PAGE_TOKEN = process.env.FACEBOOK_PAGE_TOKEN;
 
+const THREADS_USER_ID = process.env.THREADS_USER_ID;
+const THREADS_ACCESS_TOKEN = process.env.THREADS_ACCESS_TOKEN;
+
 const LINKEDIN_ACCESS_TOKEN = process.env.LINKEDIN_ACCESS_TOKEN;
 const LINKEDIN_ORG_URN = process.env.LINKEDIN_ORG_URN;
 const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION || "202406";
@@ -94,6 +97,32 @@ async function postToFacebook(text: string): Promise<"posted" | "skipped"> {
   return "posted";
 }
 
+async function postToThreads(text: string): Promise<"posted" | "skipped"> {
+  if (!THREADS_USER_ID || !THREADS_ACCESS_TOKEN) {
+    console.log("Threads credentials not set — skipping Threads");
+    return "skipped";
+  }
+  const base = "https://graph.threads.net/v1.0";
+  // Threads publishing is two steps: create a media container, then publish it.
+  const createRes = await fetch(`${base}/${THREADS_USER_ID}/threads`, {
+    method: "POST",
+    body: new URLSearchParams({ media_type: "TEXT", text, access_token: THREADS_ACCESS_TOKEN }),
+  });
+  const created = (await createRes.json()) as { id?: string; error?: { message: string } };
+  if (!createRes.ok || !created.id) {
+    throw new Error(`Threads create ${createRes.status}: ${created.error?.message ?? ""}`);
+  }
+  const pubRes = await fetch(`${base}/${THREADS_USER_ID}/threads_publish`, {
+    method: "POST",
+    body: new URLSearchParams({ creation_id: created.id, access_token: THREADS_ACCESS_TOKEN }),
+  });
+  const pub = (await pubRes.json()) as { id?: string; error?: { message: string } };
+  if (!pubRes.ok || !pub.id) {
+    throw new Error(`Threads publish ${pubRes.status}: ${pub.error?.message ?? ""}`);
+  }
+  return "posted";
+}
+
 async function postToLinkedIn(text: string): Promise<"posted" | "skipped"> {
   if (!LINKEDIN_ACCESS_TOKEN || !LINKEDIN_ORG_URN) {
     console.log("LinkedIn credentials not set — skipping LinkedIn");
@@ -148,6 +177,7 @@ export async function sendSocialPosts(sources: SignalSource[], mode: SocialMode)
   }> = [
     { name: "x", post: postToX },
     { name: "facebook", post: postToFacebook },
+    { name: "threads", post: postToThreads },
     { name: "linkedin", post: postToLinkedIn },
   ];
 

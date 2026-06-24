@@ -80,7 +80,7 @@ describe("buildPostText", () => {
   ];
 
   test("never leaks private values on any platform", () => {
-    for (const platform of ["x", "facebook", "linkedin"] as const) {
+    for (const platform of ["x", "facebook", "linkedin", "threads"] as const) {
       const text = buildPostText(sources, platform, "daily", { includeLinkInX: true });
       assert.ok(!text.includes(String(PRIVATE_BUY_VALUE)), `${platform} leaked buy value`);
       assert.ok(!text.includes("12345"), `${platform} leaked shares`);
@@ -99,6 +99,14 @@ describe("buildPostText", () => {
     );
     const text = buildPostText(many, "x", "daily", { includeLinkInX: true });
     assert.ok(text.length <= 280, `X post was ${text.length} chars`);
+  });
+
+  test("respects the 500-char Threads budget", () => {
+    const many = Array.from({ length: 10 }, (_, i) =>
+      makeSource({ ticker: `TICK${i}`, reason: "x".repeat(500) }),
+    );
+    const text = buildPostText(many, "threads", "daily");
+    assert.ok(text.length <= 500, `Threads post was ${text.length} chars`);
   });
 
   test("merges portfolio + watch recs with no portfolio/watchlist labels", () => {

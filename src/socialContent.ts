@@ -22,11 +22,12 @@ export interface SignalSource {
 }
 
 export type SocialMode = "daily" | "intraday";
-export type Platform = "x" | "facebook" | "linkedin";
+export type Platform = "x" | "facebook" | "linkedin" | "threads";
 
 // ── Platform character budgets ──────────────────────────────────────
 export const CHAR_BUDGET: Record<Platform, number> = {
   x: 280,
+  threads: 500,
   linkedin: 3000,
   facebook: 60000,
 };
