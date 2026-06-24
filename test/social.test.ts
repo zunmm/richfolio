@@ -4,6 +4,7 @@ import {
   buildSignalLines,
   buildPostText,
   intradayAlertsToSignals,
+  sanitizeReason,
   DISCLAIMER,
   type SignalSource,
 } from "../src/socialContent.js";
@@ -113,6 +114,38 @@ describe("buildPostText", () => {
 
   test("empty when no actionable signals", () => {
     assert.equal(buildPostText([makeSource({ action: "HOLD" })], "x", "daily"), "");
+  });
+});
+
+describe("sanitizeReason", () => {
+  test("strips the internal [Guard: ...] annotation", () => {
+    const r = sanitizeReason(
+      "[Guard: watch list: confidence 78% < 80% STRONG BUY threshold] Price-level signals: P/E of 19.3 is well below average.",
+    );
+    assert.ok(!r.includes("[Guard"));
+    assert.ok(r.startsWith("Price-level signals"));
+  });
+
+  test("strips a leading (Watch) marker and watch-list sentences", () => {
+    const r = sanitizeReason(
+      "(Watch) MSFT is on the watch list and is evaluated purely on signal merit. Price-level signals: P/E of 19.3 is well below the historical average.",
+    );
+    assert.ok(!/watch/i.test(r), `still mentions watch: ${r}`);
+    assert.ok(r.startsWith("Price-level signals"));
+  });
+
+  test("leaves a clean reason untouched", () => {
+    const clean = "Strong momentum and undervalued vs peers.";
+    assert.equal(sanitizeReason(clean), clean);
+  });
+
+  test("buildSignalLines applies the sanitizer", () => {
+    const [line] = buildSignalLines([
+      makeSource({ reason: "[Guard: capped] (Watch) On the watch list. Good entry near support." }),
+    ]);
+    assert.ok(!line.reason.includes("[Guard"));
+    assert.ok(!/watch/i.test(line.reason));
+    assert.ok(line.reason.includes("Good entry near support"));
   });
 });
 

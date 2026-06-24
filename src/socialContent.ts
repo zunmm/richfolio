@@ -53,6 +53,28 @@ function truncate(s: string, max: number): string {
 }
 
 /**
+ * Public posts must read cleanly and must NOT expose internal mechanics or the
+ * portfolio-vs-watchlist distinction. The AI/guard pipeline annotates reasons
+ * for the operator-facing email + Telegram; we strip those bits before they
+ * reach a public feed:
+ *  - leading guard markers the pipeline prepends, e.g. "[Guard: ...] "
+ *  - a leading "(Watch)" / "(Watching)" marker
+ *  - any sentence that mentions the watch list (keeps framing uniform)
+ */
+export function sanitizeReason(reason: string): string {
+  let r = reason
+    .replace(/\[Guard:[^\]]*\]/gi, "") // internal guard annotation
+    .replace(/^\s*\((?:watch|watching)\)\s*/i, "") // leading watch marker
+    .trim();
+  r = r
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => !/watch\s?list/i.test(s))
+    .join(" ")
+    .trim();
+  return r;
+}
+
+/**
  * Privacy chokepoint. Filters to publishable buy signals and projects each
  * onto the generic allowlist — nothing else from the source object survives.
  */
@@ -64,7 +86,7 @@ export function buildSignalLines(sources: SignalSource[]): SignalSource[] {
       tickerFullName: s.tickerFullName ?? null,
       action: s.action,
       confidence: s.confidence,
-      reason: s.reason,
+      reason: sanitizeReason(s.reason),
       valueRating: s.valueRating,
       analysisUrl: s.analysisUrl,
     }))
