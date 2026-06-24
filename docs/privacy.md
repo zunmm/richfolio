@@ -82,7 +82,4 @@ We may update this policy as the project evolves. Material changes will be refle
 
 ## Contact
 
-Questions about this policy or Richfolio's data handling:
-
-- Open an issue at [github.com/furic/richfolio/issues](https://github.com/furic/richfolio/issues)
-- Email: **r.fu@easygo.io**
+Questions about this policy or Richfolio's data handling? Please open an issue at [github.com/furic/richfolio/issues](https://github.com/furic/richfolio/issues) — this is the project's official contact channel.
