@@ -53,14 +53,24 @@ function truncate(s: string, max: number): string {
   return clean.length <= max ? clean : clean.slice(0, max - 1).trimEnd() + "…";
 }
 
+// Sentence is private if it exposes the operator's holdings/sizing: a specific
+// allocation gap, a dollar figure (comma-grouped, e.g. $7,119 — distinguishes
+// portfolio amounts from per-share price levels like $205), an ETF overlap
+// discount, an over/underweight call, or portfolio totals/position sizing.
+// Generic framework mentions (e.g. "gap ≥ 5%") are NOT matched, so they survive.
+const PRIVATE_SENTENCE =
+  /(\$\s?\d{1,3}(?:,\d{3})+|allocation gap|overlap discount|after etf overlap|under-?weight|over-?weight|portfolio (?:value|total)|position siz)/i;
+const COMMA_DOLLARS = /~?\$\s?\d{1,3}(?:,\d{3})+(?:\.\d+)?/g;
+
 /**
- * Public posts must read cleanly and must NOT expose internal mechanics or the
- * portfolio-vs-watchlist distinction. The AI/guard pipeline annotates reasons
- * for the operator-facing email + Telegram; we strip those bits before they
- * reach a public feed:
+ * Public posts must read cleanly and must NOT expose internal mechanics, the
+ * portfolio-vs-watchlist distinction, or private portfolio data. The AI/guard
+ * pipeline writes reasons for the operator-facing email + Telegram; we strip
+ * those bits before they reach a public feed:
  *  - leading guard markers the pipeline prepends, e.g. "[Guard: ...] "
  *  - a leading "(Watch)" / "(Watching)" marker
- *  - any sentence that mentions the watch list (keeps framing uniform)
+ *  - any sentence mentioning the watch list (keeps framing uniform)
+ *  - any sentence exposing allocation gaps, dollar sizing, or overlap discounts
  */
 export function sanitizeReason(reason: string): string {
   let r = reason
@@ -69,8 +79,15 @@ export function sanitizeReason(reason: string): string {
     .trim();
   r = r
     .split(/(?<=[.!?])\s+/)
-    .filter((s) => !/watch\s?list/i.test(s))
+    .filter((s) => !/watch\s?list/i.test(s) && !PRIVATE_SENTENCE.test(s))
     .join(" ")
+    .trim();
+  // Backstop: strip any comma-grouped dollar amount that survived in a kept
+  // sentence, so a stray gap/value figure can never leak.
+  r = r
+    .replace(COMMA_DOLLARS, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
   return r;
 }
@@ -119,7 +136,7 @@ export function buildPostText(
   sources: SignalSource[],
   platform: Platform,
   mode: SocialMode,
-  opts: { includeLinkInX?: boolean } = {},
+  opts: { includeLinkInX?: boolean; hashtags?: string[] } = {},
 ): string {
   const lines = buildSignalLines(sources);
   if (lines.length === 0) return "";
@@ -130,8 +147,19 @@ export function buildPostText(
   const verbose = platform !== "x";
   const includeLink = verbose || !!opts.includeLinkInX;
 
+  // Hashtags only on the non-X platforms (FB / Threads / LinkedIn), where they
+  // are clickable/searchable. X keeps inline $cashtags (native there) and its
+  // 280-char budget can't spare a tag block. Ticker tags + configured generic
+  // tags. Reserve an upper bound (all tickers) so packing stays within budget.
+  const tag = (s: string) => `#${s.replace(/^#/, "").replace(/[^A-Za-z0-9]/g, "")}`;
+  const generic = verbose ? (opts.hashtags ?? []).map(tag).filter((t) => t.length > 1) : [];
+  const reserve = verbose
+    ? `\n\n${[...lines.map((l) => tag(l.ticker)), ...generic].join(" ")}`.length
+    : 0;
+
   const blocks: string[] = [];
-  let used = header.length + footer.length;
+  const usedTickers: string[] = [];
+  let used = header.length + reserve + footer.length;
 
   for (const line of lines) {
     const head = `${actionEmoji(line.action)} ${line.action} $${line.ticker} (${line.confidence}%)${
@@ -149,6 +177,7 @@ export function buildPostText(
     // +2 for the blank-line separator between blocks
     if (used + block.length + 2 > budget) break;
     blocks.push(block);
+    usedTickers.push(tag(line.ticker));
     used += block.length + 2;
   }
 
@@ -160,5 +189,10 @@ export function buildPostText(
     );
   }
 
-  return `${header}\n\n${blocks.join("\n\n")}${footer}`;
+  // Build the actual hashtag line from the tickers that made it in (a subset of
+  // what we reserved), so the final length never exceeds the budget.
+  const tags = verbose ? [...usedTickers, ...generic] : [];
+  const hashtagLine = tags.length ? `\n\n${tags.join(" ")}` : "";
+
+  return `${header}\n\n${blocks.join("\n\n")}${hashtagLine}${footer}`;
 }

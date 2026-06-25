@@ -125,6 +125,36 @@ describe("buildPostText", () => {
   });
 });
 
+describe("hashtags", () => {
+  const sources = [
+    makeSource({ ticker: "NVDA", action: "STRONG BUY", confidence: 88 }),
+    makeSource({ ticker: "SMH", action: "BUY", confidence: 76 }),
+  ];
+  const opts = { hashtags: ["investing", "stocks"] };
+
+  test("appends ticker + generic hashtags on FB / Threads / LinkedIn", () => {
+    for (const platform of ["facebook", "threads", "linkedin"] as const) {
+      const text = buildPostText(sources, platform, "daily", opts);
+      assert.ok(text.includes("#NVDA"), `${platform} missing #NVDA`);
+      assert.ok(text.includes("#investing"), `${platform} missing #investing`);
+    }
+  });
+
+  test("does NOT add hashtags on X", () => {
+    const text = buildPostText(sources, "x", "daily", { ...opts, includeLinkInX: false });
+    assert.ok(!text.includes("#"), `X should have no hashtags: ${text}`);
+    assert.ok(text.includes("$NVDA"), "X keeps the inline cashtag");
+  });
+
+  test("hashtags keep Threads within its 500-char budget", () => {
+    const many = Array.from({ length: 10 }, (_, i) =>
+      makeSource({ ticker: `TICK${i}`, reason: "x".repeat(500) }),
+    );
+    const text = buildPostText(many, "threads", "daily", { hashtags: ["investing", "stocks"] });
+    assert.ok(text.length <= 500, `Threads post was ${text.length} chars`);
+  });
+});
+
 describe("sanitizeReason", () => {
   test("strips the internal [Guard: ...] annotation", () => {
     const r = sanitizeReason(
@@ -145,6 +175,30 @@ describe("sanitizeReason", () => {
   test("leaves a clean reason untouched", () => {
     const clean = "Strong momentum and undervalued vs peers.";
     assert.equal(sanitizeReason(clean), clean);
+  });
+
+  test("strips allocation gap + dollar sizing from the reason (real BSV example)", () => {
+    const r = sanitizeReason(
+      "Short-duration bond ETF with a 14.2% allocation gap (full gap ~$7,119). Per bond ETF framework: gap >= 5% means base score 55; 90-day percentile at 16.7%.",
+    );
+    assert.ok(!r.includes("allocation gap"), `leaked allocation gap: ${r}`);
+    assert.ok(!/\$\s?\d{1,3},\d{3}/.test(r), `leaked dollar amount: ${r}`);
+    // Generic framework + technical content survives.
+    assert.ok(/percentile/i.test(r), `dropped too much: ${r}`);
+  });
+
+  test("strips overlap-discount sizing (real VOO example)", () => {
+    const r = sanitizeReason(
+      "18.6% allocation gap (full gap ~$8,466, ~$7,608 after ETF overlap discount). VOO offers broad-market S&P 500 exposure at a P/E of 26.4; golden cross in place.",
+    );
+    assert.ok(!/\$\s?\d{1,3},\d{3}/.test(r));
+    assert.ok(!/overlap discount/i.test(r));
+    assert.ok(/golden cross/i.test(r), `dropped too much: ${r}`);
+  });
+
+  test("keeps per-share dollar price levels (no comma) — not private", () => {
+    const r = sanitizeReason("Strong support near $205 with a bullish setup.");
+    assert.ok(r.includes("$205"));
   });
 
   test("buildSignalLines applies the sanitizer", () => {

@@ -184,6 +184,7 @@ export async function sendSocialPosts(sources: SignalSource[], mode: SocialMode)
   for (const { name, post } of platforms) {
     const text = buildPostText(sources, name, mode, {
       includeLinkInX: socialConfig.includeLinkInX,
+      hashtags: socialConfig.hashtags,
     });
     if (!text) continue;
     try {

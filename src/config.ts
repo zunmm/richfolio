@@ -54,6 +54,12 @@ export interface SocialConfig {
    * raises X's pay-per-use cost (~$0.20 vs ~$0.015 per post).
    */
   includeLinkInX?: boolean;
+  /**
+   * Generic hashtags appended (with the ticker hashtags) on Facebook / Threads
+   * / LinkedIn posts to boost discoverability. The leading "#" is optional.
+   * Not added on X (cashtags are native there and the 280-char budget is tight).
+   */
+  hashtags?: string[];
 }
 
 // ── Load config.json ────────────────────────────────────────────────
@@ -128,6 +134,7 @@ export const intradayConfig: IntradayAlertConfig = {
 export const socialConfig: SocialConfig = {
   enabled: true,
   includeLinkInX: false,
+  hashtags: ["investing", "stocks", "stockmarket", "ETFs"],
   ...json.social,
 };
 
