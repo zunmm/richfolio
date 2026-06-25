@@ -147,22 +147,24 @@ export function buildPostText(
   const verbose = platform !== "x";
   const includeLink = verbose || !!opts.includeLinkInX;
 
-  // Hashtags only on the non-X platforms (FB / Threads / LinkedIn), where they
-  // are clickable/searchable. X keeps inline $cashtags (native there) and its
-  // 280-char budget can't spare a tag block. Ticker tags + configured generic
-  // tags. Reserve an upper bound (all tickers) so packing stays within budget.
-  const tag = (s: string) => `#${s.replace(/^#/, "").replace(/[^A-Za-z0-9]/g, "")}`;
-  const generic = verbose ? (opts.hashtags ?? []).map(tag).filter((t) => t.length > 1) : [];
-  const reserve = verbose
-    ? `\n\n${[...lines.map((l) => tag(l.ticker)), ...generic].join(" ")}`.length
-    : 0;
+  // Inline ticker tag: a clickable #hashtag on FB / Threads / LinkedIn, or a
+  // $cashtag on X (cashtags are only clickable on X). Generic hashtags are
+  // appended in a footer line on the non-X platforms only — reserve its length
+  // up front so packing stays within budget.
+  const cleanTicker = (t: string) => t.replace(/[^A-Za-z0-9]/g, "");
+  const inlineTicker = (t: string) => (verbose ? `#${cleanTicker(t)}` : `$${t}`);
+  const generic = verbose
+    ? (opts.hashtags ?? [])
+        .map((h) => `#${h.replace(/^#/, "").replace(/[^A-Za-z0-9]/g, "")}`)
+        .filter((t) => t.length > 1)
+    : [];
+  const hashtagLine = generic.length ? `\n\n${generic.join(" ")}` : "";
 
   const blocks: string[] = [];
-  const usedTickers: string[] = [];
-  let used = header.length + reserve + footer.length;
+  let used = header.length + hashtagLine.length + footer.length;
 
   for (const line of lines) {
-    const head = `${actionEmoji(line.action)} ${line.action} $${line.ticker} (${line.confidence}%)${
+    const head = `${actionEmoji(line.action)} ${line.action} ${inlineTicker(line.ticker)} (${line.confidence}%)${
       line.valueRating ? ` [${line.valueRating}]` : ""
     }`;
     const parts = [head];
@@ -177,22 +179,16 @@ export function buildPostText(
     // +2 for the blank-line separator between blocks
     if (used + block.length + 2 > budget) break;
     blocks.push(block);
-    usedTickers.push(tag(line.ticker));
     used += block.length + 2;
   }
 
-  // Nothing fit (e.g. X budget). Fall back to a bare cashtag line.
+  // Nothing fit (e.g. X budget). Fall back to a bare ticker line.
   if (blocks.length === 0) {
     const first = lines[0];
     blocks.push(
-      `${actionEmoji(first.action)} ${first.action} $${first.ticker} (${first.confidence}%)`,
+      `${actionEmoji(first.action)} ${first.action} ${inlineTicker(first.ticker)} (${first.confidence}%)`,
     );
   }
-
-  // Build the actual hashtag line from the tickers that made it in (a subset of
-  // what we reserved), so the final length never exceeds the budget.
-  const tags = verbose ? [...usedTickers, ...generic] : [];
-  const hashtagLine = tags.length ? `\n\n${tags.join(" ")}` : "";
 
   return `${header}\n\n${blocks.join("\n\n")}${hashtagLine}${footer}`;
 }
