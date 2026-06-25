@@ -76,6 +76,7 @@ In GitHub Actions, `config.json` is written from the `CONFIG_JSON` Actions varia
 - `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` — X/Twitter OAuth 1.0a (optional; X has no free tier since Feb 2026 — pay-per-use)
 - `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` — Facebook Page posting (optional; needs `pages_manage_posts` via Meta app review)
 - `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` — Threads posting (optional; needs `threads_content_publish`; token expires ~60 days)
+- `THREADS_TOKEN_PAT` — optional PAT (fine-grained, repo **Secrets: Read and write**) used only by `.github/workflows/refresh-threads-token.yml` to auto-refresh `THREADS_ACCESS_TOKEN` monthly. Without it, refresh the Threads token manually before the ~60-day expiry
 - `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` — LinkedIn Page posting (optional; needs `w_organization_social` + "Share on LinkedIn" approval)
 
 When both `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set, multi-AI mode auto-engages: providers run concurrently, scores average per ticker, per-AI breakdown shown in email/Telegram, STRONG BUY requires unanimous agreement. See `src/aiOrchestrator.ts` and `src/aiAggregation.ts`.

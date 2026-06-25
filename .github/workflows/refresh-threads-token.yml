@@ -1,0 +1,51 @@
+name: Refresh Threads Token
+
+# Threads long-lived tokens expire in ~60 days. This refreshes the token monthly
+# (well within the window) and writes the new value back to the THREADS_ACCESS_TOKEN
+# secret, so social posting to Threads never silently breaks.
+#
+# Gated: no-ops gracefully unless BOTH are configured —
+#   - secrets.THREADS_ACCESS_TOKEN  (the current long-lived token)
+#   - secrets.THREADS_TOKEN_PAT     (a PAT that can write Actions secrets:
+#                                    fine-grained token with repository
+#                                    "Secrets: Read and write" permission)
+
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 03:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Refresh and re-store the Threads token
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.THREADS_TOKEN_PAT }}
+        run: |
+          if [ -z "$THREADS_ACCESS_TOKEN" ]; then
+            echo "THREADS_ACCESS_TOKEN not set — Threads not configured; skipping."
+            exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "THREADS_TOKEN_PAT not set — cannot write the refreshed secret; skipping."
+            exit 0
+          fi
+          NEW=$(npx tsx scripts/refresh-threads-token.ts)
+          if [ -z "$NEW" ]; then
+            echo "No new token produced — leaving existing secret unchanged."
+            exit 0
+          fi
+          echo "::add-mask::$NEW"
+          gh secret set THREADS_ACCESS_TOKEN --body "$NEW" --repo "${{ github.repository }}"
+          echo "THREADS_ACCESS_TOKEN refreshed and updated."
