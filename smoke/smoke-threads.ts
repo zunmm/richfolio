@@ -18,12 +18,13 @@ const doPost = process.argv.includes("--post");
 const doCleanup = process.argv.includes("--cleanup");
 
 (async () => {
-  if (!USER_ID || !TOKEN) {
-    console.log("FAIL — THREADS_USER_ID and/or THREADS_ACCESS_TOKEN missing from .env");
+  if (!TOKEN) {
+    console.log("FAIL — THREADS_ACCESS_TOKEN missing from .env");
     process.exit(1);
   }
 
-  // 1. Token + identity check (no publishing).
+  // 1. Token + identity check (no publishing). Resolves the Threads user id —
+  //    handy on first run when you have the token but not yet the id.
   const meRes = await fetch(`${BASE}/me?fields=id,username&access_token=${TOKEN}`);
   const me = (await meRes.json()) as {
     id?: string;
@@ -35,6 +36,11 @@ const doCleanup = process.argv.includes("--cleanup");
     process.exit(1);
   }
   console.log(`Token OK → @${me.username} (id ${me.id})`);
+
+  if (!USER_ID) {
+    console.log(`\nSet this in .env, then re-run:\n  THREADS_USER_ID=${me.id}`);
+    return;
+  }
   if (me.id !== USER_ID) {
     console.log(`FAIL — token resolves to id ${me.id} but THREADS_USER_ID is ${USER_ID}.`);
     process.exit(1);
