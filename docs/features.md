@@ -264,9 +264,9 @@ Both channels work independently — if one isn't configured, the other still de
 
 ## Social Posting (Optional)
 
-Beyond email and Telegram, Richfolio can **optionally** publish buy signals to public social pages — **X/Twitter**, a **Facebook Page**, and a **LinkedIn Page** — in daily and intraday modes (never weekly or refresh). Posts are deliberately generic: only **STRONG BUY** and **BUY** signals, each showing ticker, action, confidence, and a short reason.
+Beyond email and Telegram, Richfolio can **optionally** publish buy signals to public social accounts — **X/Twitter**, a **Facebook Page**, a **Threads** account, and a **LinkedIn Page** — in daily and intraday modes (never weekly or refresh). Posts are deliberately generic: only **STRONG BUY** and **BUY** signals, each showing ticker, action, confidence, and a short reason.
 
-Nothing private is disclosed — allocations, gaps, holdings, and suggested buy amounts are **never** posted, and portfolio and watch-list tickers are merged uniformly as "signals" so ownership is never revealed. Every post ends with a *"Not financial advice"* disclaimer.
+Nothing private is disclosed — allocations, gaps, holdings, and suggested buy amounts are **never** posted (a sanitizer also strips any such figures from the AI's reason text), and portfolio and watch-list tickers are merged uniformly as "signals" so ownership is never revealed. The ticker is rendered as a clickable `#hashtag` on Facebook / Threads / LinkedIn, plus a configurable set of generic hashtags, to boost reach. Every post ends with a *"Not financial advice"* disclaimer.
 
 Each platform is independently gated on its own credentials and posts inside its own error boundary, so a social failure never affects the email/Telegram briefs. It stays completely off until you add credentials.
 

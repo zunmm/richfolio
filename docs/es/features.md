@@ -266,9 +266,9 @@ Ambos canales funcionan de forma independiente — si uno no está configurado, 
 
 ## Publicación en redes sociales (opcional)
 
-Más allá del correo y Telegram, Richfolio puede **opcionalmente** publicar señales de compra en páginas sociales públicas — **X/Twitter**, una **Página de Facebook** y una **Página de LinkedIn** — en los modos diario e intradía (nunca en semanal ni refresh). Las publicaciones son deliberadamente genéricas: solo señales **STRONG BUY** y **BUY**, cada una mostrando ticker, acción, confianza y una breve razón.
+Más allá del correo y Telegram, Richfolio puede **opcionalmente** publicar señales de compra en cuentas sociales públicas — **X/Twitter**, una **Página de Facebook**, una cuenta de **Threads** y una **Página de LinkedIn** — en los modos diario e intradía (nunca en semanal ni refresh). Las publicaciones son deliberadamente genéricas: solo señales **STRONG BUY** y **BUY**, cada una mostrando ticker, acción, confianza y una breve razón.
 
-No se divulga nada privado — asignaciones, brechas, tenencias y montos de compra sugeridos **nunca** se publican, y los tickers del portafolio y de la watch list se combinan de forma uniforme como "señales" para que la propiedad nunca se revele. Cada publicación termina con un descargo de responsabilidad *"Not financial advice"*.
+No se divulga nada privado — asignaciones, brechas, tenencias y montos de compra sugeridos **nunca** se publican (un sanitizador además elimina cualquiera de esas cifras del texto de la razón de la IA), y los tickers del portafolio y de la watch list se combinan de forma uniforme como "señales" para que la propiedad nunca se revele. El ticker se renderiza como un `#hashtag` clicable en Facebook / Threads / LinkedIn, más un conjunto configurable de hashtags genéricos, para aumentar el alcance. Cada publicación termina con un descargo de responsabilidad *"Not financial advice"*.
 
 Cada plataforma está condicionada de forma independiente a sus propias credenciales y publica dentro de su propio límite de error, de modo que una falla social nunca afecta los resúmenes de correo/Telegram. Permanece completamente desactivado hasta que agregues credenciales.
 

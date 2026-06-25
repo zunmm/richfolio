@@ -148,9 +148,10 @@ Telegram アカウントに凝縮されたサマリーを配信します。
 ## ソーシャル投稿 — オプション
 {: .text-yellow-200}
 
-Richfolio は汎用的な買いシグナルを X、Facebook、LinkedIn の公開ページに投稿できます。すべてのプラットフォームはオプションで、設定するまではオフのままです。プラットフォームごとに必要な Secret：
+Richfolio は汎用的な買いシグナルを X、Facebook、Threads、LinkedIn の公開アカウントに投稿できます。すべてのプラットフォームはオプションで、設定するまではオフのままです。プラットフォームごとに必要な Secret：
 
 - **Facebook：** `FACEBOOK_PAGE_ID`、`FACEBOOK_PAGE_TOKEN`
+- **Threads：** `THREADS_USER_ID`、`THREADS_ACCESS_TOKEN`（＋ 約 60 日のトークンを自動リフレッシュするためのオプションの `THREADS_TOKEN_PAT`）
 - **LinkedIn：** `LINKEDIN_ACCESS_TOKEN`、`LINKEDIN_ORG_URN`
 - **X/Twitter：** `X_API_KEY`、`X_API_SECRET`、`X_ACCESS_TOKEN`、`X_ACCESS_TOKEN_SECRET`
 
@@ -170,6 +171,8 @@ Richfolio は汎用的な買いシグナルを X、Facebook、LinkedIn の公開
 | `TELEGRAM_BOT_TOKEN` | いいえ | Telegram 配信 |
 | `TELEGRAM_CHAT_ID` | いいえ | Telegram 配信 |
 | `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | いいえ | Facebook ページ投稿 |
+| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | いいえ | Threads 投稿 |
+| `THREADS_TOKEN_PAT` | いいえ | Threads トークンの自動リフレッシュ（Secrets 書き込み権限を持つ PAT） |
 | `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | いいえ | LinkedIn ページ投稿 |
 | `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | いいえ | X/Twitter 投稿 |
 | `CLAUDE_MODEL` | いいえ | Claude モデルを上書き（デフォルト：`claude-sonnet-4-6`） |

@@ -146,9 +146,10 @@ Add both as GitHub Secrets:
 ## Social Posting — Optional
 {: .text-yellow-200}
 
-Richfolio can publish generic buy signals to public pages on X, Facebook, and LinkedIn. Every platform is optional and stays off until configured. Required secrets per platform:
+Richfolio can publish generic buy signals to public accounts on X, Facebook, Threads, and LinkedIn. Every platform is optional and stays off until configured. Required secrets per platform:
 
 - **Facebook:** `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`
+- **Threads:** `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN` (+ optional `THREADS_TOKEN_PAT` to auto-refresh the ~60-day token)
 - **LinkedIn:** `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_ORG_URN`
 - **X/Twitter:** `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET`
 
@@ -168,6 +169,8 @@ Richfolio can publish generic buy signals to public pages on X, Facebook, and Li
 | `TELEGRAM_BOT_TOKEN` | No | Telegram delivery |
 | `TELEGRAM_CHAT_ID` | No | Telegram delivery |
 | `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_TOKEN` | No | Facebook Page posting |
+| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | No | Threads posting |
+| `THREADS_TOKEN_PAT` | No | Auto-refresh the Threads token (PAT with Secrets write) |
 | `LINKEDIN_ACCESS_TOKEN` / `LINKEDIN_ORG_URN` | No | LinkedIn Page posting |
 | `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` | No | X/Twitter posting |
 | `CLAUDE_MODEL` | No | Override Claude model (default: `claude-sonnet-4-6`) |
