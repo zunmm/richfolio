@@ -30,6 +30,33 @@ function actionEmoji(action: string): string {
   }
 }
 
+/** Trim an AI-supplied string so a few long reasons can't blow the 4096 limit. */
+function truncateText(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1).trimEnd() + "…";
+}
+
+/**
+ * Hard safety net: Telegram rejects any message > 4096 chars with a 400, which
+ * drops the entire brief. Drop whole trailing lines (each line has balanced
+ * HTML tags, so this stays valid) until the message fits, appending a marker.
+ */
+function clampToLimit(lines: string[], max = MAX_MESSAGE_LENGTH): string {
+  const full = lines.join("\n");
+  if (full.length <= max) return full;
+  const note = "\n\n<i>…brief truncated to fit Telegram's limit.</i>";
+  const out = [...lines];
+  while (out.length > 1 && out.join("\n").length + note.length > max) {
+    out.pop();
+  }
+  let msg = out.join("\n");
+  if (msg.length + note.length > max) {
+    // Pathological single huge line — hard cut.
+    msg = msg.slice(0, max - note.length);
+  }
+  return msg + note;
+}
+
 // ── Build message ───────────────────────────────────────────────────
 function buildMessage(
   report: AllocationReport,
@@ -101,7 +128,7 @@ function buildMessage(
         // AI-generated prose routinely contains "<30%" / "<35" / "%B < 0.15"
         // which Telegram parses as "<30%>" and 400s the whole message. Escape
         // every AI-supplied string before injection.
-        lines.push(`   <i>${escapeHtmlText(rec.reason)}</i>`);
+        lines.push(`   <i>${escapeHtmlText(truncateText(rec.reason, 300))}</i>`);
         // Technical insight for STRONG BUY only
         if (rec.action === "STRONG BUY") {
           const tech = technicals[rec.ticker];
@@ -175,7 +202,7 @@ function buildMessage(
             .join(" · ");
           lines.push(`   ${perAI}`);
         }
-        lines.push(`   <i>${escapeHtmlText(rec.reason)}</i>`);
+        lines.push(`   <i>${escapeHtmlText(truncateText(rec.reason, 300))}</i>`);
         if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
           lines.push(
             `   💡 Limit: ${fmt$(rec.suggestedLimitPrice)}` +
@@ -235,7 +262,7 @@ function buildMessage(
     );
   }
 
-  return lines.join("\n");
+  return clampToLimit(lines);
 }
 
 // ── Send to Telegram ────────────────────────────────────────────────
@@ -330,7 +357,7 @@ function buildWeeklyMessage(report: AllocationReport): string {
     lines.push(`<i>Values in ${defaultCurrency} — multi-currency portfolio.</i>`);
   }
 
-  return lines.join("\n");
+  return clampToLimit(lines);
 }
 
 export async function sendWeeklyTelegram(report: AllocationReport): Promise<void> {
@@ -417,7 +444,7 @@ function buildIntradayMessage(alerts: IntradayAlert[]): string {
     );
   }
 
-  return lines.join("\n").trim();
+  return clampToLimit(lines).trim();
 }
 
 export async function sendIntradayTelegram(alerts: IntradayAlert[]): Promise<void> {
@@ -471,7 +498,7 @@ export async function sendRefreshTelegram(
   lines.push("");
   lines.push(`${actionEmoji(rec.action)} <b>${rec.action}</b> (${rec.confidence}%)`);
   lines.push(`💰 Price: ${fmt$(quote.price)} ${defaultCurrency} (${priceSource})`);
-  lines.push(`<i>${escapeHtmlText(rec.reason)}</i>`);
+  lines.push(`<i>${escapeHtmlText(truncateText(rec.reason, 400))}</i>`);
   if (rec.suggestedLimitPrice && rec.suggestedLimitPrice > 0) {
     lines.push(
       `💡 Limit: ${fmt$(rec.suggestedLimitPrice)}${rec.limitPriceReason ? " — " + escapeHtmlText(rec.limitPriceReason) : ""}`,
